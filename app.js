@@ -960,19 +960,35 @@
   // On wide screens shrink the active page (if needed) so it fits above the pager without scrolling.
   // Phones and tablets keep normal size and scroll instead, so text never gets too small to read.
   const FIT_MIN_WIDTH = 1101, PAGER_SPACE = 106, MIN_SCALE = 0.6;   // 104 px body padding for the pager + 2 px slack
+  let lastScale = 1;
   function fitPage() {
     const page = PAGES[pageIndex];
     const target = page.classList.contains("part") ? document.querySelector(".parts") : page;
     document.querySelectorAll(".fit-scaled").forEach((el) => { el.style.transform = ""; el.style.marginBottom = ""; el.classList.remove("fit-scaled"); });
-    if (window.innerWidth < FIT_MIN_WIDTH || document.fullscreenElement) return;
-    const height = target.getBoundingClientRect().height;
-    const scale = Math.max(MIN_SCALE, Math.min(1, (window.innerHeight - PAGER_SPACE) / height));
-    if (scale < 0.995) {
-      target.classList.add("fit-scaled");
-      target.style.transform = `scale(${scale})`;
-      target.style.marginBottom = `${-(1 - scale) * height}px`;   // give back the space the scale-down frees
+    let scale = 1;
+    if (window.innerWidth >= FIT_MIN_WIDTH && !document.fullscreenElement) {
+      const height = target.getBoundingClientRect().height;
+      scale = Math.max(MIN_SCALE, Math.min(1, (window.innerHeight - PAGER_SPACE) / height));
+      if (scale < 0.995) {
+        target.classList.add("fit-scaled");
+        target.style.transform = `scale(${scale})`;
+        target.style.marginBottom = `${-(1 - scale) * height}px`;   // give back the space the scale-down frees
+      } else scale = 1;
     }
+    const changed = Math.abs(scale - lastScale) > 0.005;
+    lastScale = scale;
+    return changed;
   }
+  // Re-fit when a page's content changes height (e.g. a longer result message wraps onto two lines).
+  // Transforms and margins do not change an element's own layout size, so this cannot loop.
+  let refitQueued = false;
+  const refit = new ResizeObserver(() => {
+    if (refitQueued) return;
+    refitQueued = true;
+    requestAnimationFrame(() => { refitQueued = false; if (fitPage()) onResize(); });   // redraw canvases at the new scale
+  });
+  PAGES.forEach((p) => refit.observe(p));
+  refit.observe(document.querySelector(".parts"));
   function updatePager() {
     const prev = PAGES[pageIndex - 1], next = PAGES[pageIndex + 1];
     $("prev-btn").disabled = !prev;
