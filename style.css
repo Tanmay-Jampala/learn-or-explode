@@ -28,7 +28,7 @@
 }
 
 * { box-sizing: border-box; }
-html { font-size: 20px; scroll-behavior: smooth; }
+html { font-size: 20px; scroll-behavior: smooth; overflow-x: clip; }   /* never scroll sideways */
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -235,6 +235,7 @@ input[type="range"]::-moz-range-thumb {
 
 .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .controls-small { gap: 12px 16px; }
+.map-controls { margin-top: 10px; }
 .check { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; min-height: 44px; }
 .check input { width: 24px; height: 24px; accent-color: var(--orange); cursor: pointer; }
 
@@ -260,7 +261,7 @@ kbd { font-family: var(--font-num); background: #fff; border: 2px solid var(--in
 .demo.is-presenting .sign-heading { margin-bottom: 18px; }
 @media (min-width: 1101px) {
   .demo.is-presenting .demo-grid {
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.95fr);
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1.05fr);
     grid-template-areas: "map ctrl stab" "map ctrl dist";
   }
   .demo.is-presenting .demo-col { display: contents; }
@@ -268,11 +269,28 @@ kbd { font-family: var(--font-num); background: #fff; border: 2px solid var(--in
   .demo.is-presenting .control-card { grid-area: ctrl; gap: 12px; }
   .demo.is-presenting .chart-stability { grid-area: stab; }
   .demo.is-presenting .chart-distance { grid-area: dist; }
-  .demo.is-presenting .chart-card canvas { height: 250px; }
-  .demo.is-presenting .presets { grid-template-columns: repeat(4, 1fr); }
-  .demo.is-presenting .tiles { grid-template-columns: repeat(3, 1fr); }
-  .demo.is-presenting .tile-wide { grid-column: auto / span 2; }
+  .demo.is-presenting .chart-card canvas { height: clamp(150px, calc(50vh - 190px), 300px); }
+  .demo.is-presenting .chart-note, .demo.is-presenting .modes { display: none; }
+  .demo.is-presenting .chart-card { padding: 12px 14px; }
+  .demo.is-presenting .chart-card h3 { font-size: 1rem; }
+  .demo.is-presenting .demo-grid { gap: 18px; }
+  .demo.is-presenting .control-card { padding: 14px 16px; }
+  .demo.is-presenting .sign-heading { margin-bottom: 14px; }
+  .demo.is-presenting .sign-heading h2 { font-size: 1.5rem; padding: 6px 22px; }
+  .demo.is-presenting .slider-wrap { padding-bottom: 46px; }
+  .demo.is-presenting .badge { padding: 6px 12px; }
+  .demo.is-presenting .badge-word { font-size: 1.7rem; }
+  .demo.is-presenting .map-card { padding: 10px; }
+  .demo.is-presenting .legend { font-size: .9rem; gap: 2px 16px; margin-top: 8px; }
+  .foot { display: none; }
+  .demo.is-presenting .tiles { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .demo.is-presenting .tile-wide, .demo.is-presenting .badge-sub { display: none; }
+  .demo.is-presenting .tile { padding: 4px 10px; }
+  .demo.is-presenting .tile dt { font-size: .8rem; white-space: nowrap; }
   .demo.is-presenting .tile dd { font-size: 1.2rem; }
+  .demo.is-presenting .controls:not(.controls-small) { display: grid; grid-template-columns: repeat(4, auto); }
+  .demo.is-presenting .controls:not(.controls-small) .btn { font-size: .85rem; padding: .2em .45em; line-height: 1.15; }
+  .demo.is-presenting .controls-small .seg-btn { font-size: .9rem; padding: .15em .55em; min-height: 40px; }
   .demo.is-presenting .keys-hint { display: none; }
   .demo.is-presenting .controls { gap: 8px; }
   .demo.is-presenting .controls .btn { font-size: .9rem; padding: .25em .6em; min-height: 44px; }
@@ -379,6 +397,69 @@ kbd { font-family: var(--font-num); background: #fff; border: 2px solid var(--in
 .foot p { margin: 6px 0; }
 .load-error { background: var(--red); color: #fff; padding: 16px; margin: 0; font-weight: 700; }
 
+/* ---------- one page at a time ---------- */
+body { padding-bottom: 104px; }               /* room for the fixed pager */
+.page:not(.is-active) { display: none; }
+.parts:not(.has-active), .foot[hidden] { display: none; }
+/* slide in with `translate`, which combines with the fit-to-screen `transform: scale()` set from JS */
+.page.is-active { animation: page-in .35s ease-out; }
+.page.is-active.from-left { animation-name: page-in-left; }
+@keyframes page-in { from { opacity: 0; translate: 36px 0; } }
+@keyframes page-in-left { from { opacity: 0; translate: -36px 0; } }
+.fit-scaled { transform-origin: top center; }
+@media (min-width: 1101px) {
+  .parts > .sign-heading { display: none; }     /* each stop already shows its number */
+  .parts { padding-top: 24px; }
+  .demo { padding-top: 24px; }
+  /* stop layout: heading on top, text + figure thumbnails on the left, the interactive on the right */
+  .part { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px;
+          grid-template-areas: "head head" "text play" "figs play"; align-items: start; }
+  .part-body { display: contents; }
+  .part-head { grid-area: head; }
+  .part-text { grid-area: text; }
+  .part-play { grid-area: play; }
+  .part .figs { grid-area: figs; margin-top: 4px; gap: 12px; }
+  .fig-thumb { width: 160px; }
+  .fig-thumb img { height: 92px; }
+}
+.hero.page { min-height: calc(100vh - 104px); min-height: calc(100svh - 104px); gap: 16px; padding: 18px 16px 8px; }
+/* the title page fits one screen: the planet takes whatever height the card and button leave */
+.hero.page .island-wrap { width: min(86vw, 620px, calc(100vh - 470px)); width: min(86vw, 620px, calc(100svh - 470px)); min-width: 220px; }
+.hero.page .hero-card { padding: 12px 24px; }
+[tabindex="-1"]:focus { outline: none; }
+
+.pager {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 45;
+  display: flex; align-items: center; gap: 14px; padding: 8px 10px;
+  width: max-content; max-width: calc(100vw - 24px);
+}
+.pager-btn { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.pager-btn:disabled { opacity: .4; cursor: default; transform: none; box-shadow: 4px 4px 0 var(--shade); }
+.dots { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; }
+.dot {
+  width: 22px; height: 22px; padding: 0; cursor: pointer;
+  border: 3px solid var(--ink); border-radius: 3px; background: var(--paper-dim);
+  transition: transform .12s, background-color .15s;
+}
+.dot:hover { transform: translateY(-2px); }
+.dot[aria-current="page"] { background: var(--sun); transform: scale(1.15); }
+
+/* ---------- map zoom toolbar ---------- */
+.map-tools { position: absolute; top: 10px; left: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tool-btn {
+  width: 44px; height: 44px; padding: 0; font: 800 1.5rem/1 var(--font-num); color: var(--ink); cursor: pointer;
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 4px; box-shadow: 3px 3px 0 var(--shade);
+  transition: transform .12s, box-shadow .12s;
+}
+.tool-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shade); }
+.tool-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px;
+  background: rgba(243, 242, 231, .95); border: 2px solid var(--ink); border-radius: 4px;
+  font-weight: 700; font-size: .95rem; font-variant-numeric: tabular-nums;
+}
+.tool-chip input { width: 22px; height: 22px; accent-color: var(--orange); cursor: pointer; }
+label.tool-chip { cursor: pointer; }
+
 /* keep content clear of the fixed side rail */
 @media (min-width: 641px) {
   .demo, .parts { padding-right: 100px; }
@@ -395,8 +476,14 @@ kbd { font-family: var(--font-num); background: #fff; border: 2px solid var(--in
 }
 @media (max-width: 640px) {
   html { font-size: 18px; }
-  .rail { top: auto; bottom: 14px; right: 14px; flex-direction: row; }
-  .menu-panel { top: auto; bottom: 86px; right: 14px; }
+  .rail { top: 10px; right: 10px; flex-direction: row; gap: 8px; }
+  .menu-panel { top: 70px; right: 10px; }
+  .pager { gap: 8px; bottom: 10px; }
+  .pager-label { display: none; }             /* arrows only on phones */
+  .dots { gap: 5px; }
+  .dot { width: 18px; height: 18px; }
+  .hero.page { padding-top: 70px; }
+  .demo, .parts { padding-top: 76px; }
   .icon-btn { width: 50px; height: 50px; }
   .presets { grid-template-columns: repeat(2, 1fr); }
   .part { padding: 18px 16px; }
@@ -414,5 +501,6 @@ kbd { font-family: var(--font-num); background: #fff; border: 2px solid var(--in
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   #hero-island { animation: none; }
+  .page.is-active { animation: none; }
   .runner { transition: none; }
 }

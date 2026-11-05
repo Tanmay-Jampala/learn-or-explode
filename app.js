@@ -223,6 +223,7 @@
   function drawHero() {
     const canvas = $("hero-island");
     const { ctx, w, h, dpr } = fitCanvas(canvas);
+    if (w < 2 || h < 2) return;                      // page not visible yet
     // The real loss contours, shown on a round "planet" (the disc keeps the slow spin seamless)
     const span = 3.4;
     const view = { w1min: W_STAR[0] - span, w1max: W_STAR[0] + span, w2min: W_STAR[1] - span, w2max: W_STAR[1] + span };
@@ -240,15 +241,25 @@
   }
 
   // ================================================================ LIVE DEMO
-  const VIEW = { w1min: -2.5, w1max: 4.0, w2min: -3.0, w2max: 2.5 };
+  // --- zoomable map view. Zoom level k means the view is 2^(k/2) times wider than the base view.
+  const BASE = { cx: 0.75, cy: -0.25, hw: 3.25, hh: 2.75 };        // base view: w1 ∈ [−2.5, 4], w2 ∈ [−3, 2.5]
+  const MIN_ZOOM_INDEX = -4, MAX_ZOOM_INDEX = 44, MAX_REAL_ZOOM_INDEX = 6;
+  const zoomOf = (k) => 2 ** (k / 2);
+  const viewFor = (k) => {
+    const z = zoomOf(k);
+    return { w1min: BASE.cx - BASE.hw * z, w1max: BASE.cx + BASE.hw * z, w2min: BASE.cy - BASE.hh * z, w2max: BASE.cy + BASE.hh * z };
+  };
+  const extentOf = (w) => Math.max(Math.abs(w[0] - BASE.cx) / BASE.hw, Math.abs(w[1] - BASE.cy) / BASE.hh);
+  let zoomIndex = 0, follow = true, VIEW = viewFor(0);
   const mapCanvas = $("map"), stabCanvas = $("stability"), distCanvas = $("distance");
-  let islandCache = null, islandKey = "";
+  const islandCache = new Map();
 
-  const run = { eta: 0.1, w0: W0_DEFAULT.slice(), path: [], dists: [], outcome: null, playing: true, carry: 0, speed: 1 };
+  const run = { eta: 0.1, w0: W0_DEFAULT.slice(), path: [], dists: [], outcome: null, playing: true, carry: 0, speed: 1, extent: 0 };
 
   function resetRun(autoplay = true) {
     run.path = [run.w0.slice()];
     run.dists = [dist(run.w0, W_STAR)];
+    run.extent = extentOf(run.w0);
     run.outcome = null;
     run.carry = 0;
     run.playing = autoplay;
@@ -261,6 +272,7 @@
     const g = gradient(w);
     const next = [w[0] - run.eta * g[0], w[1] - run.eta * g[1]];   // Euler step = gradient descent
     run.path.push(next);
+    run.extent = Math.max(run.extent, extentOf(next));
     const d = dist(next, W_STAR);
     run.dists.push(d);
     const step = run.path.length - 1;
@@ -315,14 +327,46 @@
     ctx.fillStyle = color; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, y + 1);
   }
 
+  function islandImage(k, w, h, dpr) {
+    const key = `${k}|${w}x${h}@${dpr}`;
+    if (!islandCache.has(key)) {
+      if (islandCache.size > 14) islandCache.clear();
+      islandCache.set(key, renderIsland(w, h, dpr, viewFor(k), 1, k <= 2 ? { seed: 5, trees: 26, size: 8 } : null));
+    }
+    return islandCache.get(key);
+  }
+  function drawIsland(ctx, w, h, dpr) {
+    if (zoomIndex <= MAX_REAL_ZOOM_INDEX) { ctx.drawImage(islandImage(zoomIndex, w, h, dpr), 0, 0, w, h); return; }
+    // Far out the island is a speck in open sea: shrink the zoom-×8 picture into the middle.
+    const s = zoomOf(MAX_REAL_ZOOM_INDEX) / zoomOf(zoomIndex);
+    ctx.fillStyle = C.sky; ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(islandImage(MAX_REAL_ZOOM_INDEX, w, h, dpr), w * (1 - s) / 2, h * (1 - s) / 2, w * s, h * s);
+  }
+  // With "follow" on, zoom out just far enough to keep every point of the run on the map
+  function followZoomIndex() {
+    const r = run.extent * 1.12;
+    return r <= 1 ? 0 : Math.min(MAX_ZOOM_INDEX, Math.ceil(2 * Math.log2(r)));
+  }
+  function setZoom(k, keepFollow = false) {
+    zoomIndex = Math.max(MIN_ZOOM_INDEX, Math.min(MAX_ZOOM_INDEX, k));
+    if (!keepFollow) { follow = false; $("follow").checked = false; }
+    drawMap();
+  }
+  function zoomText() {
+    const z = zoomOf(zoomIndex);
+    const big = (x) => Math.round(x).toLocaleString("en-US");      // zoom factors read better as 370,728
+    const shown = z < 10 ? z.toFixed(z < 1 ? 2 : 1).replace(/\.0$/, "") : big(z);
+    const half = BASE.hw * z;
+    return `zoom ×${shown} · w₁ ±${half < 100 ? half.toFixed(1) : big(half)}`;
+  }
+
   function drawMap() {
     const { ctx, w, h, dpr } = fitCanvas(mapCanvas);
-    const key = `${w}x${h}@${dpr}`;
-    if (key !== islandKey) {
-      islandCache = renderIsland(w, h, dpr, VIEW, 1, { seed: 5, trees: 26, size: 8 });
-      islandKey = key;
-    }
-    ctx.drawImage(islandCache, 0, 0, w, h);
+    if (w < 2 || h < 2) return;                      // page not visible yet
+    if (follow) zoomIndex = followZoomIndex();
+    VIEW = viewFor(zoomIndex);
+    drawIsland(ctx, w, h, dpr);
+    $("zoom-label").textContent = zoomText();
 
     if ($("eigen-toggle").checked) {
       const [sx, sy] = toMap(W_STAR, w, h);
@@ -492,6 +536,7 @@
     const fs = 1 - run.eta * LAM_MIN, ff = 1 - run.eta * LAM_MAX;
     $("r-modes").innerHTML = `Each step multiplies the <b>flat</b> mode by <b>${fmt(fs, 3)}</b> and the <b>steep</b> mode by <b>${fmt(ff, 3)}</b>` +
       (ff < 0 ? " (negative, so it flips sides: zig-zag)." : ".");
+    $("r-factor").parentElement.title = $("r-modes").textContent;     // same explanation on hover in the compact layout
     const out = $("r-outcome");
     if (run.outcome === "converged") out.textContent = `Converged in ${fmtInt(step)} steps (‖w − w*‖ < 10⁻⁶).`;
     else if (run.outcome === "exploded") out.textContent = `Exploded: ‖w‖ passed 10⁶ at step ${fmtInt(step)}.`;
@@ -509,7 +554,7 @@
     $("eta").style.setProperty("--track", `linear-gradient(90deg, #dff1e4 0 ${pctOf(ETA_ONE) * 100}%, #fbf0c9 ${pctOf(ETA_ONE) * 100}% ${p}%, #f3c9c0 ${p}% 100%)`);
   }
   function placeTicks() {
-    const wrap = $("ticks"), width = $("eta").getBoundingClientRect().width, thumb = 34;
+    const wrap = $("ticks"), width = $("eta").offsetWidth, thumb = 34;   // layout width (unaffected by fit scaling)
     wrap.innerHTML = "";
     [[ETA_ONE, "tick-one tick-center", "zig-zag<br>" + fmt(ETA_ONE, 3)], [ETA_OPT, "tick-opt tick-left", "best<br>" + fmt(ETA_OPT, 2)],
       [ETA_CRIT, "tick-crit tick-right", "η<sub>crit</sub><br>" + fmt(ETA_CRIT, 3)]].forEach(([eta, cls, html]) => {
@@ -529,7 +574,7 @@
   function frame(time) {
     const dt = Math.min(1000, time - (lastTime || time));   // keeps real-time pace even on a slow PC
     lastTime = time;
-    if (run.playing && !run.outcome) {
+    if (run.playing && !run.outcome && PAGES[pageIndex].id === "demo") {
       const rate = (4 + 0.6 * currentStep()) * run.speed;   // steps per second
       run.carry += dt / 1000 * rate;
       let n = Math.floor(run.carry); run.carry -= n;
@@ -551,6 +596,10 @@
       document.querySelectorAll("[data-speed]").forEach((o) => o.classList.toggle("is-on", o === b));
     }));
     $("eigen-toggle").addEventListener("change", drawMap);
+    $("zoom-in").addEventListener("click", () => setZoom(zoomIndex - 1));
+    $("zoom-out").addEventListener("click", () => setZoom(zoomIndex + 1));
+    $("follow").addEventListener("change", (e) => { follow = e.target.checked; drawMap(); });
+    mapCanvas.addEventListener("wheel", (e) => { e.preventDefault(); setZoom(zoomIndex + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
     mapCanvas.addEventListener("click", (e) => {
       const r = mapCanvas.getBoundingClientRect();
       run.w0 = fromMap(e.clientX - r.left, e.clientY - r.top, r.width, r.height).map((v) => Math.round(v * 100) / 100);
@@ -560,14 +609,19 @@
     $("rail-full-btn").addEventListener("click", toggleFullscreen);
     document.addEventListener("fullscreenchange", () => {
       $("full-btn").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen";
-      $("demo").classList.toggle("is-presenting", Boolean(document.fullscreenElement));
       setTimeout(onResize, 60);
     });
     document.addEventListener("keydown", (e) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || $("lightbox").open) return;
       const tag = (e.target.tagName || "").toLowerCase();
       if (tag === "input" && e.target.type !== "range") return;
+      // page turning (a focused slider keeps its own arrow keys)
+      if (tag !== "input" && (e.key === "ArrowRight" || e.key === "PageDown")) { e.preventDefault(); goTo(pageIndex + 1); return; }
+      if (tag !== "input" && (e.key === "ArrowLeft" || e.key === "PageUp")) { e.preventDefault(); goTo(pageIndex - 1); return; }
+      if (PAGES[pageIndex].id !== "demo") return;          // the rest are demo shortcuts
       const presets = { 1: 0.10, 2: 1.00, 3: 1.12, 4: 1.13 };
+      if (e.key === "+" || e.key === "=") { setZoom(zoomIndex - 1); return; }
+      if (e.key === "-" || e.key === "_") { setZoom(zoomIndex + 1); return; }
       if (presets[e.key] !== undefined) { setEta(presets[e.key]); }
       else if (e.key === " " && tag !== "button" && tag !== "a") { e.preventDefault(); togglePlay(); }
       else if (e.key === "r" || e.key === "R") resetRun(true);
@@ -582,8 +636,9 @@
   function skipToEnd() { while (!run.outcome) stepOnce(); renderAll(); }
   function toggleFullscreen() {
     const demo = $("demo");
-    if (document.fullscreenElement) document.exitFullscreen();
-    else if (demo.requestFullscreen) demo.requestFullscreen().catch(() => {});
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    if (PAGES[pageIndex].id !== "demo") showPage(PAGES.indexOf(demo));
+    if (demo.requestFullscreen) demo.requestFullscreen().catch(() => {});
   }
 
   // ================================================================ PART 1: the linear system
@@ -637,7 +692,7 @@
     const place = (k) => {
       [[gs, "gs"], [jac, "j"]].forEach(([errs, id]) => {
         const i = Math.min(k, errs.length - 1);
-        const track = $("runner-" + id).parentElement.getBoundingClientRect().width - 32;
+        const track = $("runner-" + id).parentElement.offsetWidth - 32;
         $("runner-" + id).style.left = (progress(errs[i]) * track) + "px";
         $("count-" + id).textContent = i;
       });
@@ -703,6 +758,7 @@
     $("budget-out").textContent = s.toFixed(2);
     const sol = solveLagrange(s);
     const { ctx, w, h, dpr } = fitCanvas(canvas);
+    if (w < 2 || h < 2) return;                      // page not visible yet
     const key = `${w}x${h}@${dpr}`;
     if (key !== lagrangeKey) { lagrangeCache = renderIsland(w, h, dpr, LVIEW, 0.25, null); lagrangeKey = key; }
     ctx.drawImage(lagrangeCache, 0, 0, w, h);
@@ -758,12 +814,13 @@
     // Euler points from the same start, step h = η
     let wk = run.w0.slice();
     const marks = [C.orange, "#7fb4dc"];
+    const half = 2 + 2 * Math.min(1, run.eta / 0.5);     // small steps → many points → smaller markers
     for (let k = 0; k * run.eta <= tMax + 1e-9 && k < 400; k++) {
       const t = k * run.eta;
       [0, 1].forEach((i) => {
         ctx.fillStyle = marks[i]; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
         const y = Y(Math.max(yMin - 0.5, Math.min(yMax + 0.5, wk[i])));
-        ctx.beginPath(); ctx.rect(X(t) - 4, y - 4, 8, 8); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.rect(X(t) - half, y - half, 2 * half, 2 * half); ctx.fill(); ctx.stroke();
       });
       const g = gradient(wk); wk = [wk[0] - run.eta * g[0], wk[1] - run.eta * g[1]];
     }
@@ -793,7 +850,7 @@
     }).join("");
     document.querySelectorAll("[data-set-eta]").forEach((b) => b.addEventListener("click", () => {
       setEta(Number(b.dataset.setEta));
-      if (b.dataset.scroll) $(b.dataset.scroll).scrollIntoView({ behavior: REDUCED_MOTION ? "auto" : "smooth" });
+      if (b.dataset.scroll) goTo(PAGES.indexOf($(b.dataset.scroll)));
     }));
   }
 
@@ -860,15 +917,95 @@
   let resizeTimer = null;
   function onResize() {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { drawHero(); placeTicks(); renderAll(); drawLagrange(); }, 120);
+    resizeTimer = setTimeout(() => { fitPage(); drawHero(); placeTicks(); renderAll(); drawLagrange(); }, 120);
   }
 
-  // ================================================================ start
+  // ================================================================ title-screen text
   $("hero-n").textContent = fmtInt(R.n_rows);
   $("hero-crit").textContent = fmt(ETA_CRIT, 3);
   drawBlockTitle($("hero-title"), ["LEARN", "OR", "EXPLODE"]);
+  // ================================================================ pages (one at a time, Back / Next)
+  const PAGES = [...document.querySelectorAll(".page")];
+  let pageIndex = 0;
+  const pageFromHash = () => Math.max(0, PAGES.findIndex((p) => "#" + p.id === location.hash));
+  function goTo(i) {
+    if (i < 0 || i >= PAGES.length || i === pageIndex) return;
+    location.hash = PAGES[i].id;                          // hashchange → showPage (keeps browser Back working)
+  }
+  function showPage(i, { focus = true } = {}) {
+    const forward = i >= pageIndex;
+    pageIndex = i;
+    PAGES.forEach((p, k) => {
+      p.classList.toggle("is-active", k === i);
+      p.classList.toggle("from-left", k === i && !forward);
+    });
+    const page = PAGES[i];
+    document.querySelector(".parts").classList.toggle("has-active", page.classList.contains("part"));
+    $("site-foot").hidden = i !== PAGES.length - 1;
+    window.scrollTo(0, 0);
+    updatePager();
+    fitPage();
+    // canvases on a page that was hidden had no size; draw them now that it is visible
+    if (page.id === "top") drawHero();
+    if (page.id === "demo") { placeTicks(); resetRun(true); }
+    if (page.id === "part4") drawLagrange();
+    if (page.id === "part5") drawEuler();
+    if (page.id === "part2") window.dispatchEvent(new Event("resize"));
+    if (focus) {
+      const heading = page.querySelector("h1, h2, h3");
+      heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
+  }
+  // On wide screens shrink the active page (if needed) so it fits above the pager without scrolling.
+  // Phones and tablets keep normal size and scroll instead, so text never gets too small to read.
+  const FIT_MIN_WIDTH = 1101, PAGER_SPACE = 106, MIN_SCALE = 0.6;   // 104 px body padding for the pager + 2 px slack
+  function fitPage() {
+    const page = PAGES[pageIndex];
+    const target = page.classList.contains("part") ? document.querySelector(".parts") : page;
+    document.querySelectorAll(".fit-scaled").forEach((el) => { el.style.transform = ""; el.style.marginBottom = ""; el.classList.remove("fit-scaled"); });
+    if (window.innerWidth < FIT_MIN_WIDTH || document.fullscreenElement) return;
+    const height = target.getBoundingClientRect().height;
+    const scale = Math.max(MIN_SCALE, Math.min(1, (window.innerHeight - PAGER_SPACE) / height));
+    if (scale < 0.995) {
+      target.classList.add("fit-scaled");
+      target.style.transform = `scale(${scale})`;
+      target.style.marginBottom = `${-(1 - scale) * height}px`;   // give back the space the scale-down frees
+    }
+  }
+  function updatePager() {
+    const prev = PAGES[pageIndex - 1], next = PAGES[pageIndex + 1];
+    $("prev-btn").disabled = !prev;
+    $("prev-label").textContent = prev ? prev.dataset.title : "Back";
+    $("next-label").textContent = next ? "Next: " + next.dataset.title : "Back to the start";
+    $("prev-btn").setAttribute("aria-label", prev ? "Previous page: " + prev.dataset.title : "No previous page");
+    $("next-btn").setAttribute("aria-label", next ? "Next page: " + next.dataset.title : "Back to the title screen");
+    document.querySelectorAll(".dot").forEach((d, k) => {
+      if (k === pageIndex) d.setAttribute("aria-current", "page"); else d.removeAttribute("aria-current");
+    });
+  }
+  function initPager() {
+    const dots = $("dots");
+    PAGES.forEach((p, k) => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.className = "dot"; b.title = p.dataset.title; b.setAttribute("aria-label", "Go to page: " + p.dataset.title);
+      b.addEventListener("click", () => goTo(k));
+      li.appendChild(b); dots.appendChild(li);
+    });
+    $("prev-btn").addEventListener("click", () => goTo(pageIndex - 1));
+    $("next-btn").addEventListener("click", () => (pageIndex === PAGES.length - 1 ? goTo(0) : goTo(pageIndex + 1)));
+    window.addEventListener("hashchange", () => showPage(pageFromHash()));
+  }
+
+  // ================================================================ start
   initMenu(); initDemo(); initPart1(); initPart2(); initPart3(); initPart4(); initPart5(); initPart6(); initFigures();
-  drawHero(); placeTicks(); setEta(0.10); drawLagrange();
+  initPager();
+  setEta(0.10, false);
+  showPage(pageFromHash(), { focus: false });
+  // a direct link like #part3 makes the browser jump to that anchor after loading; start at the top instead
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  window.addEventListener("load", () => window.scrollTo(0, 0));
   window.addEventListener("resize", onResize);
   requestAnimationFrame(frame);
 

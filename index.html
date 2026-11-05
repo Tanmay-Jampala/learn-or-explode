@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Learn or Explode</title>
 <meta name="description" content="Interactive demo: how the eigenvalues of the Hessian decide whether gradient descent learns or explodes.">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -41,6 +41,7 @@
 <div class="menu-panel paper" id="menu-panel" hidden>
   <p class="menu-title">Map of the island</p>
   <ol>
+    <li><a href="#top">Title screen</a></li>
     <li><a href="#demo">The experiment (live demo)</a></li>
     <li><a href="#part1">1 · Data &amp; the equations</a></li>
     <li><a href="#part2">2 · Gauss elimination &amp; Gauss-Seidel</a></li>
@@ -52,7 +53,7 @@
 </div>
 
 <!-- ================= TITLE SCREEN ================= -->
-<header class="hero" id="top">
+<header class="hero page" id="top" data-title="Title screen">
   <div class="island-wrap">
     <canvas id="hero-island" aria-hidden="true"></canvas>
     <svg id="hero-title" class="block-title" aria-hidden="true"></svg>
@@ -69,7 +70,7 @@
 
 <main>
 <!-- ================= LIVE DEMO ================= -->
-<section class="demo" id="demo" aria-labelledby="demo-title">
+<section class="demo page is-presenting" id="demo" data-title="The experiment" aria-labelledby="demo-title">
   <div class="sign-heading"><h2 id="demo-title">The experiment: pick a learning rate</h2></div>
 
   <div class="demo-grid">
@@ -77,7 +78,22 @@
     <div class="map-card paper">
       <div class="map-frame">
         <canvas id="map" aria-label="Loss landscape seen from above, with the gradient-descent path. Click to choose a new starting point." role="img"></canvas>
-        <div class="map-banner" id="map-banner" hidden>The weights flew off the map!</div>
+        <div class="map-banner" id="map-banner" hidden>The weights flew off the map! Zoom out or tick “follow”.</div>
+        <div class="map-tools" role="group" aria-label="Map zoom">
+          <button class="tool-btn" id="zoom-out" aria-label="Zoom out">−</button>
+          <button class="tool-btn" id="zoom-in" aria-label="Zoom in">+</button>
+          <label class="tool-chip"><input type="checkbox" id="follow" checked> follow</label>
+          <span class="tool-chip" id="zoom-label" aria-live="polite">zoom ×1</span>
+        </div>
+      </div>
+      <div class="controls controls-small map-controls">
+        <div class="seg" role="group" aria-label="Animation speed">
+          <button class="seg-btn" data-speed="0.25">Slow</button>
+          <button class="seg-btn is-on" data-speed="1">Normal</button>
+          <button class="seg-btn" data-speed="6">Fast</button>
+        </div>
+        <label class="check"><input type="checkbox" id="eigen-toggle"> valley directions</label>
+        <button class="btn btn-small" id="full-btn">Full screen</button>
       </div>
       <ul class="legend">
         <li><span class="key key-goal" aria-hidden="true"></span><span>w* = best weights (lowest loss)</span></li>
@@ -124,16 +140,6 @@
         <button class="btn" id="reset-btn">Restart</button>
         <button class="btn" id="skip-btn">Skip to result</button>
       </div>
-      <div class="controls controls-small">
-        <div class="seg" role="group" aria-label="Animation speed">
-          <button class="seg-btn" data-speed="0.25">Slow</button>
-          <button class="seg-btn is-on" data-speed="1">Normal</button>
-          <button class="seg-btn" data-speed="6">Fast</button>
-        </div>
-        <label class="check"><input type="checkbox" id="eigen-toggle"> valley directions</label>
-        <button class="btn btn-small" id="full-btn">Full screen</button>
-      </div>
-
       <dl class="tiles">
         <div class="tile"><dt>stability factor</dt><dd id="r-factor">0.978</dd></div>
         <div class="tile"><dt>step</dt><dd id="r-step">0</dd></div>
@@ -160,7 +166,7 @@
   <div class="sign-heading"><h2 id="parts-title">Six stops on the island</h2></div>
 
   <!-- PART 1 -->
-  <article class="part paper" id="part1">
+  <article class="part paper page" id="part1" data-title="1 · Data">
     <header class="part-head">
       <span class="stop-num" aria-hidden="true">1</span>
       <div><h3>Data &amp; the system of equations</h3><p class="tag">Module I · CO1 · rank &amp; consistency</p></div>
@@ -185,7 +191,7 @@
   </article>
 
   <!-- PART 2 -->
-  <article class="part paper" id="part2">
+  <article class="part paper page" id="part2" data-title="2 · Solving it">
     <header class="part-head">
       <span class="stop-num" aria-hidden="true">2</span>
       <div><h3>Solving it: Gauss elimination vs Gauss-Seidel</h3><p class="tag">Module I · CO1 · direct &amp; iterative methods</p></div>
@@ -212,7 +218,7 @@
   </article>
 
   <!-- PART 3 -->
-  <article class="part paper" id="part3">
+  <article class="part paper page" id="part3" data-title="3 · Loss surface">
     <header class="part-head">
       <span class="stop-num" aria-hidden="true">3</span>
       <div><h3>The loss surface: partial derivatives &amp; the minimum test</h3><p class="tag">Module III · CO3 · maxima, minima &amp; eigenvalues</p></div>
@@ -239,7 +245,7 @@
   </article>
 
   <!-- PART 4 -->
-  <article class="part paper" id="part4">
+  <article class="part paper page" id="part4" data-title="4 · Lagrange">
     <header class="part-head">
       <span class="stop-num" aria-hidden="true">4</span>
       <div><h3>Constrained training: Lagrange multipliers</h3><p class="tag">Module III · CO3 · ridge regression</p></div>
@@ -262,7 +268,7 @@
   </article>
 
   <!-- PART 5 -->
-  <article class="part paper" id="part5">
+  <article class="part paper page" id="part5" data-title="5 · Training as an ODE">
     <header class="part-head">
       <span class="stop-num" aria-hidden="true">5</span>
       <div><h3>Training as a differential equation</h3><p class="tag">Module II · CO2 · linear ODE systems, stability, Euler</p></div>
@@ -295,7 +301,7 @@
   </article>
 
   <!-- PART 6 -->
-  <article class="part paper" id="part6">
+  <article class="part paper page" id="part6" data-title="6 · The limit">
     <header class="part-head">
       <span class="stop-num" aria-hidden="true">6</span>
       <div><h3>The learning-rate limit</h3><p class="tag">Modules I + II · CO6 · the headline result</p></div>
@@ -326,10 +332,17 @@
 </section>
 </main>
 
-<footer class="foot">
+<footer class="foot" id="site-foot">
   <p>Every number on this page is read from <code>results.json</code>, the same file the notebook writes, so the site and the notebook always agree. Works offline: just open <code>index.html</code>.</p>
   <p>25BSMA01 Matrix Algebra and Calculus · Experiential Learning · Jain University, Faculty of Engineering &amp; Technology</p>
 </footer>
+
+<!-- Page navigation (one page at a time) -->
+<nav class="pager paper" aria-label="Pages">
+  <button class="btn pager-btn" id="prev-btn"><span aria-hidden="true">◀</span> <span class="pager-label" id="prev-label">Back</span></button>
+  <ol class="dots" id="dots"></ol>
+  <button class="btn btn-sun pager-btn" id="next-btn"><span class="pager-label" id="next-label">Next</span> <span aria-hidden="true">▶</span></button>
+</nav>
 
 <!-- Figure viewer -->
 <dialog class="lightbox" id="lightbox" aria-labelledby="lightbox-caption">
@@ -342,7 +355,7 @@
   <button class="icon-btn lb-next" id="lb-next" aria-label="Next figure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16l11-8z"/></svg></button>
 </dialog>
 
-<script src="data.js"></script>
-<script src="app.js"></script>
+<script src="data.js?v=11"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
