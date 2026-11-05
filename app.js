@@ -366,7 +366,7 @@
     if (follow) zoomIndex = followZoomIndex();
     VIEW = viewFor(zoomIndex);
     drawIsland(ctx, w, h, dpr);
-    $("zoom-label").textContent = zoomText();
+    setText($("zoom-label"), zoomText());
 
     if ($("eigen-toggle").checked) {
       const [sx, sy] = toMap(W_STAR, w, h);
@@ -520,12 +520,14 @@
       $("badge-word").textContent = { smooth: "Converging", zigzag: "Zig-zagging", explode: "Exploding" }[reg];
       lastRegime = reg;
     }
-    $("badge-sub").textContent = {
+    setText($("badge-sub"), {
       smooth: "every step moves straight downhill",
       zigzag: "overshoots the valley, but each bounce is smaller",
       explode: "each bounce is bigger than the last",
-    }[reg];
+    }[reg]);
   }
+  // Only touch the DOM when the text really changes: screen readers announce every change to a live region.
+  function setText(el, text) { if (el.textContent !== text) el.textContent = text; }
   function updateReadouts() {
     const cur = run.path[run.path.length - 1], step = currentStep();
     $("r-factor").textContent = fmt(factor(run.eta), 4);
@@ -538,10 +540,10 @@
       (ff < 0 ? " (negative, so it flips sides: zig-zag)." : ".");
     $("r-factor").parentElement.title = $("r-modes").textContent;     // same explanation on hover in the compact layout
     const out = $("r-outcome");
-    if (run.outcome === "converged") out.textContent = `Converged in ${fmtInt(step)} steps (‖w − w*‖ < 10⁻⁶).`;
-    else if (run.outcome === "exploded") out.textContent = `Exploded: ‖w‖ passed 10⁶ at step ${fmtInt(step)}.`;
-    else if (run.outcome === "unfinished") out.textContent = `Still going after ${fmtInt(MAX_STEPS)} steps: very slow, right at the edge.`;
-    else out.textContent = run.playing ? "Training…" : "Paused.";
+    if (run.outcome === "converged") setText(out, `Converged in ${fmtInt(step)} steps (‖w − w*‖ < 10⁻⁶).`);
+    else if (run.outcome === "exploded") setText(out, `Exploded: ‖w‖ passed 10⁶ at step ${fmtInt(step)}.`);
+    else if (run.outcome === "unfinished") setText(out, `Still going after ${fmtInt(MAX_STEPS)} steps: very slow, right at the edge.`);
+    else setText(out, run.playing ? "Training…" : "Paused.");
   }
   function updatePlayButton() {
     const btn = $("play-btn");
@@ -637,7 +639,11 @@
   function toggleFullscreen() {
     const demo = $("demo");
     if (document.fullscreenElement) { document.exitFullscreen(); return; }
-    if (PAGES[pageIndex].id !== "demo") showPage(PAGES.indexOf(demo));
+    if (PAGES[pageIndex].id !== "demo") {
+      // switch page synchronously (full screen must start inside the click), and keep the address in step
+      history.pushState(null, "", "#demo");
+      showPage(PAGES.indexOf(demo));
+    }
     if (demo.requestFullscreen) demo.requestFullscreen().catch(() => {});
   }
 
