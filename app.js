@@ -220,14 +220,15 @@
   }
 
   // ---------------------------------------------------------------- hero
-  function drawHero() {
-    const canvas = $("hero-island");
+  function drawHero() { drawPlanet($("hero-island"), true); drawPlanet($("footer-island"), false); }
+  function drawPlanet(canvas, houses) {
+    if (!canvas) return;
     const { ctx, w, h, dpr } = fitCanvas(canvas);
     if (w < 2 || h < 2) return;                      // page not visible yet
     // The real loss contours, shown on a round "planet" (the disc keeps the slow spin seamless)
     const span = 3.4;
     const view = { w1min: W_STAR[0] - span, w1max: W_STAR[0] + span, w2min: W_STAR[1] - span, w2max: W_STAR[1] + span };
-    const island = renderIsland(w, h, dpr, view, 0.5, { seed: 3, trees: 80, size: 8, houses: true });
+    const island = renderIsland(w, h, dpr, view, 0.5, { seed: 3, trees: 80, size: 8, houses });
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2, cy = h / 2, radius = w / 2 - 8;
     ctx.save();
@@ -576,7 +577,7 @@
   function frame(time) {
     const dt = Math.min(1000, time - (lastTime || time));   // keeps real-time pace even on a slow PC
     lastTime = time;
-    if (run.playing && !run.outcome && PAGES[pageIndex].id === "demo") {
+    if (run.playing && !run.outcome && demoActive) {
       const rate = (4 + 0.6 * currentStep()) * run.speed;   // steps per second
       run.carry += dt / 1000 * rate;
       let n = Math.floor(run.carry); run.carry -= n;
@@ -608,7 +609,6 @@
       resetRun(true);
     });
     $("full-btn").addEventListener("click", toggleFullscreen);
-    $("rail-full-btn").addEventListener("click", toggleFullscreen);
     document.addEventListener("fullscreenchange", () => {
       $("full-btn").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen";
       setTimeout(onResize, 60);
@@ -617,10 +617,7 @@
       if (e.ctrlKey || e.metaKey || e.altKey || $("lightbox").open) return;
       const tag = (e.target.tagName || "").toLowerCase();
       if (tag === "input" && e.target.type !== "range") return;
-      // page turning (a focused slider keeps its own arrow keys)
-      if (tag !== "input" && (e.key === "ArrowRight" || e.key === "PageDown")) { e.preventDefault(); goTo(pageIndex + 1); return; }
-      if (tag !== "input" && (e.key === "ArrowLeft" || e.key === "PageUp")) { e.preventDefault(); goTo(pageIndex - 1); return; }
-      if (PAGES[pageIndex].id !== "demo") return;          // the rest are demo shortcuts
+      if (!demoActive || document.querySelector("dialog[open]")) return;   // shortcuts only while the experiment is on screen
       const presets = { 1: 0.10, 2: 1.00, 3: 1.12, 4: 1.13 };
       if (e.key === "+" || e.key === "=") { setZoom(zoomIndex - 1); return; }
       if (e.key === "-" || e.key === "_") { setZoom(zoomIndex + 1); return; }
@@ -639,11 +636,6 @@
   function toggleFullscreen() {
     const demo = $("demo");
     if (document.fullscreenElement) { document.exitFullscreen(); return; }
-    if (PAGES[pageIndex].id !== "demo") {
-      // switch page synchronously (full screen must start inside the click), and keep the address in step
-      history.pushState(null, "", "#demo");
-      showPage(PAGES.indexOf(demo));
-    }
     if (demo.requestFullscreen) demo.requestFullscreen().catch(() => {});
   }
 
@@ -856,7 +848,7 @@
     }).join("");
     document.querySelectorAll("[data-set-eta]").forEach((b) => b.addEventListener("click", () => {
       setEta(Number(b.dataset.setEta));
-      if (b.dataset.scroll) goTo(PAGES.indexOf($(b.dataset.scroll)));
+      if (b.dataset.scroll) (window.__story ? window.__story.goTo(b.dataset.scroll) : $(b.dataset.scroll).scrollIntoView());
     }));
   }
 
@@ -878,6 +870,9 @@
     fig12: ["fig12_headline_112_vs_113.png", "Headline: η = 1.12 converges, η = 1.13 explodes"],
     anim: ["anim_converge_vs_explode.gif", "Animation: η = 1.12 vs η = 1.13 side by side"],
   };
+  const FIG_STOP = { fig01: "Stop 01", fig14: "Stop 01", fig09: "Stop 02", fig02: "Stop 03", fig03: "Stop 03", fig13: "Stop 03",
+    fig10: "Stop 04", fig07: "Stop 05", fig08: "Stop 05", fig11: "Stop 05", fig04: "Stop 06", fig05: "Stop 06", fig06: "Stop 06",
+    fig12: "Stop 06", anim: "Stop 06" };
   const FIG_ORDER = [];
   let lbIndex = 0;
   function initFigures() {
@@ -887,7 +882,7 @@
         const index = FIG_ORDER.push(id) - 1;
         const btn = document.createElement("button");
         btn.className = "btn fig-thumb";
-        btn.innerHTML = `<img src="figures/${file}" alt="" loading="lazy"><span>${caption}</span>`;
+        btn.innerHTML = `<img src="figures/${file}" alt="" loading="lazy"><span><span class="fig-tag">${FIG_STOP[id]}</span>${caption}</span>`;
         btn.setAttribute("aria-label", "Open figure: " + caption);
         btn.addEventListener("click", () => openFigure(index));
         strip.appendChild(btn);
@@ -911,126 +906,31 @@
     if (!$("lightbox").open) $("lightbox").showModal();
   }
 
-  // ================================================================ menu & resize
-  function initMenu() {
-    const btn = $("menu-btn"), panel = $("menu-panel");
-    const set = (open) => { panel.hidden = !open; btn.setAttribute("aria-expanded", String(open)); };
-    btn.addEventListener("click", () => set(panel.hidden));
-    panel.addEventListener("click", (e) => { if (e.target.tagName === "A") set(false); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") set(false); });
-    document.addEventListener("click", (e) => { if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target)) set(false); });
-  }
+  // ================================================================ resize & start
   let resizeTimer = null;
+  function redraw() { drawHero(); placeTicks(); renderAll(); drawLagrange(); }
   function onResize() {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { fitPage(); drawHero(); placeTicks(); renderAll(); drawLagrange(); }, 120);
+    resizeTimer = setTimeout(redraw, 120);
   }
 
-  // ================================================================ title-screen text
+  // The scroll story reports when the experiment section is on screen: the run restarts as you arrive,
+  // and only advances (and listens for shortcuts) while it is visible.
+  let demoActive = false;
+  function setActive(active) {
+    if (active === demoActive) return;
+    demoActive = active;
+    if (active) { placeTicks(); resetRun(true); }
+  }
+
   $("hero-n").textContent = fmtInt(R.n_rows);
   $("hero-crit").textContent = fmt(ETA_CRIT, 3);
   drawBlockTitle($("hero-title"), ["LEARN", "OR", "EXPLODE"]);
-  // ================================================================ pages (one at a time, Back / Next)
-  const PAGES = [...document.querySelectorAll(".page")];
-  let pageIndex = 0;
-  const pageFromHash = () => Math.max(0, PAGES.findIndex((p) => "#" + p.id === location.hash));
-  function goTo(i) {
-    if (i < 0 || i >= PAGES.length || i === pageIndex) return;
-    location.hash = PAGES[i].id;                          // hashchange → showPage (keeps browser Back working)
-  }
-  function showPage(i, { focus = true } = {}) {
-    const forward = i >= pageIndex;
-    pageIndex = i;
-    PAGES.forEach((p, k) => {
-      p.classList.toggle("is-active", k === i);
-      p.classList.toggle("from-left", k === i && !forward);
-    });
-    const page = PAGES[i];
-    document.querySelector(".parts").classList.toggle("has-active", page.classList.contains("part"));
-    $("site-foot").hidden = i !== PAGES.length - 1;
-    window.scrollTo(0, 0);
-    updatePager();
-    fitPage();
-    // canvases on a page that was hidden had no size; draw them now that it is visible
-    if (page.id === "top") drawHero();
-    if (page.id === "demo") { placeTicks(); resetRun(true); }
-    if (page.id === "part4") drawLagrange();
-    if (page.id === "part5") drawEuler();
-    if (page.id === "part2") window.dispatchEvent(new Event("resize"));
-    if (focus) {
-      const heading = page.querySelector("h1, h2, h3");
-      heading.setAttribute("tabindex", "-1");
-      heading.focus({ preventScroll: true });
-    }
-  }
-  // On wide screens shrink the active page (if needed) so it fits above the pager without scrolling.
-  // Phones and tablets keep normal size and scroll instead, so text never gets too small to read.
-  const FIT_MIN_WIDTH = 1101, PAGER_SPACE = 106, MIN_SCALE = 0.6;   // 104 px body padding for the pager + 2 px slack
-  let lastScale = 1;
-  function fitPage() {
-    const page = PAGES[pageIndex];
-    const target = page.classList.contains("part") ? document.querySelector(".parts") : page;
-    document.querySelectorAll(".fit-scaled").forEach((el) => { el.style.transform = ""; el.style.marginBottom = ""; el.classList.remove("fit-scaled"); });
-    let scale = 1;
-    if (window.innerWidth >= FIT_MIN_WIDTH && !document.fullscreenElement) {
-      const height = target.getBoundingClientRect().height;
-      scale = Math.max(MIN_SCALE, Math.min(1, (window.innerHeight - PAGER_SPACE) / height));
-      if (scale < 0.995) {
-        target.classList.add("fit-scaled");
-        target.style.transform = `scale(${scale})`;
-        target.style.marginBottom = `${-(1 - scale) * height}px`;   // give back the space the scale-down frees
-      } else scale = 1;
-    }
-    const changed = Math.abs(scale - lastScale) > 0.005;
-    lastScale = scale;
-    return changed;
-  }
-  // Re-fit when a page's content changes height (e.g. a longer result message wraps onto two lines).
-  // Transforms and margins do not change an element's own layout size, so this cannot loop.
-  let refitQueued = false;
-  const refit = new ResizeObserver(() => {
-    if (refitQueued) return;
-    refitQueued = true;
-    requestAnimationFrame(() => { refitQueued = false; if (fitPage()) onResize(); });   // redraw canvases at the new scale
-  });
-  PAGES.forEach((p) => refit.observe(p));
-  refit.observe(document.querySelector(".parts"));
-  function updatePager() {
-    const prev = PAGES[pageIndex - 1], next = PAGES[pageIndex + 1];
-    $("prev-btn").disabled = !prev;
-    $("prev-label").textContent = prev ? prev.dataset.title : "Back";
-    $("next-label").textContent = next ? "Next: " + next.dataset.title : "Back to the start";
-    $("prev-btn").setAttribute("aria-label", prev ? "Previous page: " + prev.dataset.title : "No previous page");
-    $("next-btn").setAttribute("aria-label", next ? "Next page: " + next.dataset.title : "Back to the title screen");
-    document.querySelectorAll(".dot").forEach((d, k) => {
-      if (k === pageIndex) d.setAttribute("aria-current", "page"); else d.removeAttribute("aria-current");
-    });
-  }
-  function initPager() {
-    const dots = $("dots");
-    PAGES.forEach((p, k) => {
-      const li = document.createElement("li");
-      const b = document.createElement("button");
-      b.className = "dot"; b.title = p.dataset.title; b.setAttribute("aria-label", "Go to page: " + p.dataset.title);
-      b.addEventListener("click", () => goTo(k));
-      li.appendChild(b); dots.appendChild(li);
-    });
-    $("prev-btn").addEventListener("click", () => goTo(pageIndex - 1));
-    $("next-btn").addEventListener("click", () => (pageIndex === PAGES.length - 1 ? goTo(0) : goTo(pageIndex + 1)));
-    window.addEventListener("hashchange", () => showPage(pageFromHash()));
-  }
-
-  // ================================================================ start
-  initMenu(); initDemo(); initPart1(); initPart2(); initPart3(); initPart4(); initPart5(); initPart6(); initFigures();
-  initPager();
+  initDemo(); initPart1(); initPart2(); initPart3(); initPart4(); initPart5(); initPart6(); initFigures();
   setEta(0.10, false);
-  showPage(pageFromHash(), { focus: false });
-  // a direct link like #part3 makes the browser jump to that anchor after loading; start at the top instead
-  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-  window.addEventListener("load", () => window.scrollTo(0, 0));
+  redraw();
   window.addEventListener("resize", onResize);
   requestAnimationFrame(frame);
 
-  // exposed for automated checks only
-  window.__demo = { run, setEta, skipToEnd, solveLagrange, iterate, loss, onResize };
+  window.__demo = { run, setEta, skipToEnd, solveLagrange, iterate, loss, onResize, redraw, setActive, isActive: () => demoActive };
 })();

@@ -4,74 +4,306 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Learn or Explode</title>
-<meta name="description" content="Interactive demo: how the eigenvalues of the Hessian decide whether gradient descent learns or explodes.">
+<meta name="description" content="Interactive story: how the eigenvalues of the Hessian decide whether gradient descent learns or explodes.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%2363c2bc'/%3E%3Cpath d='M50 14L90 84H10z' fill='%23b8412f' stroke='%2322333a' stroke-width='7' stroke-linejoin='round'/%3E%3Cpath d='M50 36v24' stroke='%23f3f2e7' stroke-width='9'/%3E%3Crect x='45.5' y='66' width='9' height='9' fill='%23f3f2e7'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="style.css?v=fda14725ee">
+<link rel="stylesheet" href="style.css?v=8d8921b68a">
 </head>
 <body>
 
-<!-- Painted sky: soft cloud streaks and speckles (decorative) -->
-<svg class="sky" aria-hidden="true" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
-  <g fill="#86d9cd" opacity=".55">
-    <path d="M90 140c60-30 150-20 230-48 70-24 120-60 190-52 40 5 20 40-30 52-90 22-160 50-250 62-70 10-190 20-140-14z"/>
-    <path d="M1120 90c80-10 160-48 250-40 60 6 120 28 90 52-30 22-110 10-190 22-80 12-150 34-210 20-50-12-10-46 60-54z"/>
-    <path d="M1180 760c60-40 130-90 210-110 60-14 120 0 100 30-24 36-110 52-170 84-60 32-110 70-160 54-40-14-20-40 20-58z"/>
-    <path d="M120 820c40-50 110-60 170-100 50-32 90-80 140-70 40 8 20 50-20 80-60 44-120 70-180 100-60 30-140 40-110-10z"/>
-    <path d="M640 40c40-14 110-12 160-26 30-8 60 6 40 20-30 22-90 24-150 30-40 4-90-8-50-24z"/>
-  </g>
-  <g fill="#4fb1a9" opacity=".7">
-    <circle cx="150" cy="95" r="7"/><circle cx="1380" cy="190" r="5"/><circle cx="260" cy="920" r="6"/>
-    <circle cx="1510" cy="880" r="7"/><circle cx="980" cy="960" r="4"/><circle cx="60" cy="520" r="5"/>
-    <circle cx="1450" cy="520" r="4"/><circle cx="560" cy="980" r="5"/><circle cx="820" cy="30" r="4"/>
-    <path d="M318 120l12 6-4 12-10-8zM1505 105l14 2-2 10-12-4zM1060 1060l10 4-6 10-8-8z"/>
-  </g>
-</svg>
-
-<!-- Game-style side rail -->
-<nav class="rail" aria-label="Quick controls">
-  <button class="icon-btn" id="menu-btn" aria-label="Open section menu" aria-expanded="false" aria-controls="menu-panel">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2v2H4zM9 6h11v2H9zM4 11h2v2H4zM9 11h11v2H9zM4 16h2v2H4zM9 16h11v2H9z"/></svg>
-  </button>
-  <button class="icon-btn" id="rail-full-btn" aria-label="Show the demo full screen">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4zM14 4h6v6h-2V6h-4zM4 14h2v4h4v2H4zM18 14h2v6h-6v-2h4z"/></svg>
-  </button>
-  <a class="icon-btn" href="#top" aria-label="Back to the title screen">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l8 8h-5v8H9v-8H4z"/></svg>
-  </a>
-</nav>
-<div class="menu-panel paper" id="menu-panel" hidden>
-  <p class="menu-title">Map of the island</p>
-  <ol>
-    <li><a href="#top">Title screen</a></li>
-    <li><a href="#demo">The experiment (live demo)</a></li>
-    <li><a href="#part1">1 · Data &amp; the equations</a></li>
-    <li><a href="#part2">2 · Gauss elimination &amp; Gauss-Seidel</a></li>
-    <li><a href="#part3">3 · The loss surface</a></li>
-    <li><a href="#part4">4 · Lagrange multipliers</a></li>
-    <li><a href="#part5">5 · Training as an ODE</a></li>
-    <li><a href="#part6">6 · The learning-rate limit</a></li>
-  </ol>
+<!-- Loading screen: loss contours draw in, then the screen lifts away -->
+<div class="preloader" id="preloader" aria-hidden="true">
+  <svg class="preloader-mark" viewBox="-60 -60 120 120">
+    <g transform="rotate(-45)" fill="none" stroke="#22333a" stroke-width="5" stroke-linecap="round">
+      <ellipse class="ring ring-3" rx="52" ry="20" pathLength="100"/>
+      <ellipse class="ring ring-2" rx="34" ry="13" pathLength="100"/>
+      <ellipse class="ring ring-1" rx="16" ry="6" pathLength="100"/>
+    </g>
+    <circle class="ring-dot" r="4" fill="#b8412f"/>
+  </svg>
+  <p class="preloader-text">Loading the loss surface</p>
 </div>
 
-<!-- ================= TITLE SCREEN ================= -->
-<header class="hero page" id="top" data-title="Title screen">
+<!-- Fixed navigation -->
+<header class="nav">
+  <a class="wordmark" href="#top" aria-label="Learn or Explode: back to the top"><span class="wm-serif">Learn or</span><span class="wm-bold">Explode</span></a>
+  <div class="nav-right">
+    <a class="pill" href="#demo">Run the experiment</a>
+    <button class="menu-btn" id="menu-btn" aria-label="Open menu" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v2.4H4zM4 13.6h10v2.4H4z"/></svg>
+    </button>
+  </div>
+</header>
+<div class="scrollbar" aria-hidden="true"><span id="scroll-bar"></span></div>
+
+<!-- Full-screen menu -->
+<dialog class="menu" id="menu" aria-label="Site menu">
+  <button class="menu-close" id="menu-close" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l6 6 6-6 2 2-6 6 6 6-2 2-6-6-6 6-2-2 6-6-6-6z"/></svg></button>
+  <div class="menu-grid">
+    <nav class="menu-links" aria-label="Sections">
+      <a href="#top" data-preview="fig02">Home</a>
+      <a href="#statement" data-preview="fig12">The idea</a>
+      <a href="#story" data-preview="fig03">Six stops</a>
+      <a href="#demo" data-preview="fig04">The experiment</a>
+      <a href="#gallery" data-preview="fig06">Figures</a>
+      <a href="#runs" data-preview="fig05">Seven runs</a>
+    </nav>
+    <div class="menu-side">
+      <div class="menu-preview"><img id="menu-preview-img" src="figures/fig02_loss_surface_3d.png" alt=""></div>
+      <nav class="menu-stops" aria-label="The six stops">
+        <a href="#part1">01 · Data</a><a href="#part2">02 · Solving it</a><a href="#part3">03 · Loss surface</a>
+        <a href="#part4">04 · Lagrange</a><a href="#part5">05 · Training as an ODE</a><a href="#part6">06 · The limit</a>
+      </nav>
+    </div>
+  </div>
+</dialog>
+
+<main>
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <div class="hero-marquee" aria-hidden="true">
+    <div class="mq mq-serif"><span>Gradient descent · Eigenvalues · Gradient descent · Eigenvalues · </span><span>Gradient descent · Eigenvalues · Gradient descent · Eigenvalues · </span></div>
+    <div class="mq mq-bold mq-reverse"><span>Learning rate limits · Learning rate limits · Learning rate limits · </span><span>Learning rate limits · Learning rate limits · Learning rate limits · </span></div>
+  </div>
   <div class="island-wrap">
     <canvas id="hero-island" aria-hidden="true"></canvas>
+    <svg class="signature" viewBox="0 0 400 400" aria-hidden="true">
+      <path id="signature-path" pathLength="100" d="M52 318 L330 96 L96 300 L296 128 L132 280 L262 158 L166 258 L232 188 L196 226"/>
+    </svg>
     <svg id="hero-title" class="block-title" aria-hidden="true"></svg>
   </div>
-  <div class="hero-card paper">
+  <div class="hero-text">
     <h1>Learning Rate Limits</h1>
     <p class="lede">How eigenvalues decide whether an AI model <strong>learns</strong> or <strong>explodes</strong>.</p>
     <p class="meta">25BSMA01 Matrix Algebra &amp; Calculus · Experiential Learning · Jain University (FET)</p>
   </div>
-  <a class="btn-enter" href="#demo">Enter</a>
-  <p class="hero-hint"><span id="hero-n">9,858</span> Bengaluru houses · 2 weights · one number decides everything:
-    <strong>η<sub>crit</sub> = <span id="hero-crit">1.125</span></strong></p>
-</header>
+  <a class="scroll-hint" href="#statement"><span>Scroll</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4h2v12l5-5 1.4 1.4L12 19.8 4.6 12.4 6 11l5 5z"/></svg></a>
+</section>
 
-<main>
-<!-- ================= LIVE DEMO ================= -->
-<section class="demo page is-presenting" id="demo" data-title="The experiment" aria-labelledby="demo-title">
+<!-- ================= STATEMENT ================= -->
+<section class="statement dark contours" id="statement" aria-label="The idea">
+  <p class="eyebrow"><span id="hero-n">9,858</span> Bengaluru houses · 2 weights · 1 number</p>
+  <p class="mega" id="mega" data-words>One number decides whether an AI model <em>learns</em> or <em>explodes</em>. The <em>eigenvalues</em> predict it before training even starts.</p>
+  <p class="statement-foot">η<sub>crit</sub> = 2 / λ<sub>max</sub> = <strong id="hero-crit">1.125</strong></p>
+</section>
+
+<!-- ================= SIX STOPS (sideways story) ================= -->
+<section class="story" id="story" aria-label="Six stops on the island">
+  <div class="story-pin">
+    <div class="htrack" id="htrack">
+    <div class="panel panel-intro" data-panel="0">
+      <p class="mega mega-small">Six stops<br><em>on the island</em></p>
+      <p class="intro-note">Each stop is one part of the notebook, with something to try.</p>
+      <p class="intro-go" aria-hidden="true">Keep scrolling <svg viewBox="0 0 24 24"><path d="M4 11h12l-5-5 1.4-1.4L19.8 12l-7.4 7.4L11 18l5-5H4z"/></svg></p>
+    </div>
+    <div class="panel" id="part1" data-panel="1">
+      <span class="panel-num" aria-hidden="true">01</span>
+      <p class="panel-kicker">Stop 01 · Start at the data</p>
+      <div class="panel-inner fit">
+  <article class="part paper">
+    <header class="part-head">
+      <span class="stop-num" aria-hidden="true">1</span>
+      <div><h3>Data &amp; the system of equations</h3><p class="tag">Module I · CO1 · rank &amp; consistency</p></div>
+    </header>
+    <div class="part-body">
+      <div class="part-text">
+        <p>We standardise area, bedrooms and price, so the model needs just two weights. Setting the slope of the loss to zero gives a 2 × 2 linear system, the <em>normal equations</em>.</p>
+        <div class="eq">
+          <math display="block"><mi>A</mi><mi>w</mi><mo>=</mo><mi>b</mi><mo>,</mo><mspace width="0.8em"></mspace><mi>A</mi><mo>=</mo><mfrac><mrow><msup><mi>Z</mi><mi>T</mi></msup><mi>Z</mi></mrow><mi>n</mi></mfrac><mo>=</mo><mrow><mo>[</mo><mtable><mtr><mtd><mn>1</mn></mtd><mtd><mi>ρ</mi></mtd></mtr><mtr><mtd><mi>ρ</mi></mtd><mtd><mn>1</mn></mtd></mtr></mtable><mo>]</mo></mrow></math>
+        </div>
+        <ul class="chips" id="p1-chips"></ul>
+      </div>
+      <div class="part-play">
+        <div class="seg" role="group" aria-label="Which system to show">
+          <button class="seg-btn is-on" id="p1-two">2 features</button>
+          <button class="seg-btn" id="p1-three">+ duplicate (sqft in m²)</button>
+        </div>
+        <div class="system" id="p1-system" aria-live="polite"></div>
+      </div>
+    </div>
+  </article>
+      </div>
+    </div>
+    <div class="panel" id="part2" data-panel="2">
+      <span class="panel-num" aria-hidden="true">02</span>
+      <p class="panel-kicker">Stop 02 · Solve it three ways</p>
+      <div class="panel-inner fit">
+  <article class="part paper">
+    <header class="part-head">
+      <span class="stop-num" aria-hidden="true">2</span>
+      <div><h3>Solving it: Gauss elimination vs Gauss-Seidel</h3><p class="tag">Module I · CO1 · direct &amp; iterative methods</p></div>
+    </header>
+    <div class="part-body">
+      <div class="part-text">
+        <p>Gauss elimination solves it exactly in two moves. The iterative methods creep up on the answer; Gauss-Seidel uses each new value straight away, so it gets there about twice as fast as Jacobi.</p>
+        <div class="eq">
+          <math display="block"><msubsup><mi>w</mi><mn>1</mn><mrow><mo>(</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo>)</mo></mrow></msubsup><mo>=</mo><msub><mi>b</mi><mn>1</mn></msub><mo>−</mo><mi>ρ</mi><msubsup><mi>w</mi><mn>2</mn><mrow><mo>(</mo><mi>k</mi><mo>)</mo></mrow></msubsup></math>
+          <math display="block"><msubsup><mi>w</mi><mn>2</mn><mrow><mo>(</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo>)</mo></mrow></msubsup><mo>=</mo><msub><mi>b</mi><mn>2</mn></msub><mo>−</mo><mi>ρ</mi><msubsup><mi>w</mi><mn>1</mn><mrow><mo>(</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo>)</mo></mrow></msubsup></math>
+        </div>
+        <ul class="chips" id="p2-chips"></ul>
+      </div>
+      <div class="part-play">
+        <div class="race" id="race">
+          <div class="lane"><span class="lane-name">Gauss-Seidel</span><div class="track"><span class="runner runner-gs" id="runner-gs"></span></div><span class="lane-count" id="count-gs">0</span></div>
+          <div class="lane"><span class="lane-name">Jacobi</span><div class="track"><span class="runner runner-j" id="runner-j"></span></div><span class="lane-count" id="count-j">0</span></div>
+          <p class="race-note">Each runner moves as its error shrinks from 1 to 10<sup>−6</sup>.</p>
+        </div>
+        <div class="controls"><button class="btn btn-sun" id="race-btn">Start the race</button></div>
+      </div>
+    </div>
+  </article>
+      </div>
+    </div>
+    <div class="panel" id="part3" data-panel="3">
+      <span class="panel-num" aria-hidden="true">03</span>
+      <p class="panel-kicker">Stop 03 · Read the landscape</p>
+      <div class="panel-inner fit">
+  <article class="part paper">
+    <header class="part-head">
+      <span class="stop-num" aria-hidden="true">3</span>
+      <div><h3>The loss surface: partial derivatives &amp; the minimum test</h3><p class="tag">Module III · CO3 · maxima, minima &amp; eigenvalues</p></div>
+    </header>
+    <div class="part-body">
+      <div class="part-text">
+        <p>The loss is a bowl. Its second derivatives pass the minimum test, and the eigenvalues of the Hessian show it is a long, narrow valley: steep one way, flat the other. The chain rule that finds the slope is exactly backpropagation.</p>
+        <div class="eq">
+          <math display="block"><mi>r</mi><mi>t</mi><mo>−</mo><msup><mi>s</mi><mn>2</mn></msup><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>ρ</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0</mn><mspace width="0.6em"></mspace><mtext>and</mtext><mspace width="0.6em"></mspace><mi>r</mi><mo>&gt;</mo><mn>0</mn><mspace width="0.6em"></mspace><mo>⇒</mo><mspace width="0.4em"></mspace><mtext>minimum</mtext></math>
+          <math display="block"><mo>det</mo><mo>(</mo><mi>A</mi><mo>−</mo><mi>λ</mi><mi>I</mi><mo>)</mo><mo>=</mo><msup><mrow><mo>(</mo><mn>1</mn><mo>−</mo><mi>λ</mi><mo>)</mo></mrow><mn>2</mn></msup><mo>−</mo><msup><mi>ρ</mi><mn>2</mn></msup><mo>=</mo><mn>0</mn><mo>⇒</mo><mi>λ</mi><mo>=</mo><mn>1</mn><mo>±</mo><mi>ρ</mi></math>
+        </div>
+        <ul class="chips" id="p3-chips"></ul>
+      </div>
+      <div class="part-play">
+        <p class="play-title">What does the model predict?</p>
+        <label class="mini-label" for="calc-sqft">Area: <output id="calc-sqft-out">1,200</output> sqft</label>
+        <input type="range" id="calc-sqft" min="450" max="4685" step="5" value="1200">
+        <div class="seg" role="group" aria-label="Bedrooms" id="calc-bhk"></div>
+        <p class="price" id="calc-price" aria-live="polite"></p>
+        <p class="small-note" id="calc-note"></p>
+      </div>
+    </div>
+  </article>
+      </div>
+    </div>
+    <div class="panel" id="part4" data-panel="4">
+      <span class="panel-num" aria-hidden="true">04</span>
+      <p class="panel-kicker">Stop 04 · Add a budget</p>
+      <div class="panel-inner fit">
+  <article class="part paper">
+    <header class="part-head">
+      <span class="stop-num" aria-hidden="true">4</span>
+      <div><h3>Constrained training: Lagrange multipliers</h3><p class="tag">Module III · CO3 · ridge regression</p></div>
+    </header>
+    <div class="part-body">
+      <div class="part-text">
+        <p>Give the weights a budget: they must lie on a circle of radius <i>s</i>. The best point is where a loss contour just touches the circle, and there the slope points straight along the weights. This is ridge regression, a standard way to stop AI weights growing too large.</p>
+        <div class="eq">
+          <math display="block"><mo>∇</mo><mi>L</mi><mo>+</mo><mi>μ</mi><mi>w</mi><mo>=</mo><mn>0</mn><mo>⇒</mo><mo>(</mo><mi>A</mi><mo>+</mo><mi>μ</mi><mi>I</mi><mo>)</mo><mi>w</mi><mo>=</mo><mi>b</mi><mo>,</mo><mspace width="0.8em"></mspace><msubsup><mi>w</mi><mn>1</mn><mn>2</mn></msubsup><mo>+</mo><msubsup><mi>w</mi><mn>2</mn><mn>2</mn></msubsup><mo>=</mo><msup><mi>s</mi><mn>2</mn></msup></math>
+        </div>
+        <ul class="chips" id="p4-chips" aria-live="polite"></ul>
+      </div>
+      <div class="part-play">
+        <label class="mini-label" for="budget">Weight budget <i>s</i> = <output id="budget-out">0.60</output></label>
+        <input type="range" id="budget" min="0.10" max="1.20" step="0.01" value="0.60">
+        <canvas id="lagrange" class="mini-canvas" role="img" aria-label="Loss contours with the constraint circle and the constrained minimum."></canvas>
+      </div>
+    </div>
+  </article>
+      </div>
+    </div>
+    <div class="panel" id="part5" data-panel="5">
+      <span class="panel-num" aria-hidden="true">05</span>
+      <p class="panel-kicker">Stop 05 · Let time flow</p>
+      <div class="panel-inner fit">
+  <article class="part paper">
+    <header class="part-head">
+      <span class="stop-num" aria-hidden="true">5</span>
+      <div><h3>Training as a differential equation</h3><p class="tag">Module II · CO2 · linear ODE systems, stability, Euler</p></div>
+    </header>
+    <div class="part-body">
+      <div class="part-text">
+        <p>With tiny steps, training follows a system of linear ODEs. Diagonalising <i>A</i> splits it into two exponential decays, one fast and one slow. Ordinary gradient descent is just <strong>Euler's method</strong> on this ODE with step <i>h</i> = η, and the loss never goes up along the exact flow.</p>
+        <div class="eq">
+          <math display="block"><msup><mi>w</mi><mo>′</mo></msup><mo>=</mo><mo>−</mo><mi>A</mi><mo>(</mo><mi>w</mi><mo>−</mo><msup><mi>w</mi><mo>*</mo></msup><mo>)</mo><mo>⇒</mo><msub><mi>z</mi><mi>i</mi></msub><mo>(</mo><mi>t</mi><mo>)</mo><mo>=</mo><msub><mi>z</mi><mi>i</mi></msub><mo>(</mo><mn>0</mn><mo>)</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>λ</mi><mi>i</mi></msub><mi>t</mi></mrow></msup></math>
+          <math display="block"><mfrac><mrow><mi>d</mi><mi>L</mi></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>=</mo><mo>−</mo><msup><mrow><mo>‖</mo><mo>∇</mo><mi>L</mi><mo>‖</mo></mrow><mn>2</mn></msup><mo>≤</mo><mn>0</mn></math>
+        </div>
+        <ul class="chips" id="p5-chips"></ul>
+      </div>
+      <div class="part-play">
+        <p class="play-title">Exact ODE curve vs Euler steps (h = η from the demo slider)</p>
+        <canvas id="euler" class="mini-canvas" role="img" aria-label="Exact gradient-flow solution for w1 and w2 with Euler points at the current learning rate."></canvas>
+        <ul class="legend euler-legend">
+          <li><span class="key key-line" aria-hidden="true"></span><span>exact w<sub>1</sub>(t)</span></li>
+          <li><span class="key key-line key-dash" aria-hidden="true"></span><span>exact w<sub>2</sub>(t)</span></li>
+          <li><span class="key key-sq-orange" aria-hidden="true"></span><span class="key key-sq-blue" aria-hidden="true"></span><span>Euler steps, h = η = <b id="euler-eta">0.10</b></span></li>
+        </ul>
+        <div class="controls"><span class="mini-label">Try:</span>
+          <button class="btn btn-small" data-set-eta="0.10">η = 0.10</button>
+          <button class="btn btn-small" data-set-eta="1.00">η = 1.00</button>
+          <button class="btn btn-small" data-set-eta="1.13">η = 1.13</button>
+        </div>
+      </div>
+    </div>
+  </article>
+      </div>
+    </div>
+    <div class="panel" id="part6" data-panel="6">
+      <span class="panel-num" aria-hidden="true">06</span>
+      <p class="panel-kicker">Stop 06 · Find the limit</p>
+      <div class="panel-inner fit">
+  <article class="part paper">
+    <header class="part-head">
+      <span class="stop-num" aria-hidden="true">6</span>
+      <div><h3>The learning-rate limit</h3><p class="tag">Modules I + II · CO6 · the headline result</p></div>
+    </header>
+    <div class="part-body">
+      <div class="part-text">
+        <p>In eigen-coordinates every step multiplies each error mode by its own factor. Training converges only if every factor stays inside (−1, 1). The eigenvalues predicted the limit <em>before</em> any training ran, and all seven runs agreed.</p>
+        <div class="eq">
+          <math display="block"><msub><mi>z</mi><mi>i</mi></msub><mo>←</mo><mo>(</mo><mn>1</mn><mo>−</mo><mi>η</mi><msub><mi>λ</mi><mi>i</mi></msub><mo>)</mo><msub><mi>z</mi><mi>i</mi></msub></math>
+          <math display="block"><mo stretchy="false">|</mo><mn>1</mn><mo>−</mo><mi>η</mi><msub><mi>λ</mi><mi>i</mi></msub><mo stretchy="false">|</mo><mo>&lt;</mo><mn>1</mn><mo>⇔</mo><mi>η</mi><mo>&lt;</mo><mfrac><mn>2</mn><msub><mi>λ</mi><mi>max</mi></msub></mfrac><mo>=</mo><mn>1.125</mn></math>
+        </div>
+        <ul class="chips" id="p6-chips"></ul>
+      </div>
+      <div class="part-play">
+        <table class="runs" id="runs-table">
+          <caption>Seven training runs from w<sub>0</sub> = (−1.5, −1.0)</caption>
+          <thead><tr><th scope="col">η</th><th scope="col">factor</th><th scope="col">predicted</th><th scope="col">outcome</th><th scope="col">steps</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="controls">
+          <button class="btn btn-small" data-set-eta="1.12" data-scroll="demo">Watch 1.12 in the demo</button>
+          <button class="btn btn-small" data-set-eta="1.13" data-scroll="demo">Watch 1.13 in the demo</button>
+        </div>
+      </div>
+    </div>
+  </article>
+      </div>
+    </div>
+    </div>
+    <div class="story-hud" aria-hidden="true">
+      <span class="hud-count"><b id="hud-num">00</b> / 06</span>
+      <span class="hud-bar"><span id="hud-fill"></span></span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CHOOSE A SIDE ================= -->
+<section class="split" id="choose" aria-label="Choose a learning rate">
+  <button class="split-half split-learn" data-set-eta="1.12" data-scroll="demo">
+    <span class="split-eta">η = 1.12</span>
+    <span class="mega mega-small"><em>Learn</em></span>
+    <span class="split-note">Just under the limit. Factor 0.991: every bounce is a little smaller.</span>
+  </button>
+  <button class="split-half split-explode" data-set-eta="1.13" data-scroll="demo">
+    <span class="split-eta">η = 1.13</span>
+    <span class="mega mega-small">Explode</span>
+    <span class="split-note">Just over the limit. Factor 1.009: every bounce is a little bigger.</span>
+  </button>
+  <p class="split-or" aria-hidden="true">or</p>
+</section>
+
+<!-- ================= THE EXPERIMENT ================= -->
+<section class="demo is-presenting" id="demo" aria-labelledby="demo-title">
+  <div class="demo-inner fit">
   <div class="sign-heading"><h2 id="demo-title">The experiment: pick a learning rate</h2></div>
 
   <div class="demo-grid">
@@ -160,192 +392,59 @@
     </div>
    </div>
   </div>
+  </div>
 </section>
 
-<!-- ================= SIX STOPS ================= -->
-<section class="parts" aria-labelledby="parts-title">
-  <div class="sign-heading"><h2 id="parts-title">Six stops on the island</h2></div>
+<!-- ================= FIGURES ================= -->
+<section class="gallery dark contours" id="gallery" aria-labelledby="gallery-title">
+  <div class="gallery-head">
+    <h2 class="mega mega-small" id="gallery-title">Figures<br><em>hall of fame</em></h2>
+    <p>Every figure from the notebook, straight from the same run that produced the numbers on this page.</p>
+  </div>
+  <div class="figs gallery-grid" data-figs="fig01,fig14,fig09,fig02,fig03,fig13,fig10,fig07,fig08,fig11,fig04,fig05,fig06,fig12,anim"></div>
+</section>
 
-  <!-- PART 1 -->
-  <article class="part paper page" id="part1" data-title="1 · Data">
-    <header class="part-head">
-      <span class="stop-num" aria-hidden="true">1</span>
-      <div><h3>Data &amp; the system of equations</h3><p class="tag">Module I · CO1 · rank &amp; consistency</p></div>
-    </header>
-    <div class="part-body">
-      <div class="part-text">
-        <p>We standardise area, bedrooms and price, so the model needs just two weights. Setting the slope of the loss to zero gives a 2 × 2 linear system, the <em>normal equations</em>.</p>
-        <div class="eq">
-          <math display="block"><mi>A</mi><mi>w</mi><mo>=</mo><mi>b</mi><mo>,</mo><mspace width="0.8em"></mspace><mi>A</mi><mo>=</mo><mfrac><mrow><msup><mi>Z</mi><mi>T</mi></msup><mi>Z</mi></mrow><mi>n</mi></mfrac><mo>=</mo><mrow><mo>[</mo><mtable><mtr><mtd><mn>1</mn></mtd><mtd><mi>ρ</mi></mtd></mtr><mtr><mtd><mi>ρ</mi></mtd><mtd><mn>1</mn></mtd></mtr></mtable><mo>]</mo></mrow></math>
-        </div>
-        <ul class="chips" id="p1-chips"></ul>
-      </div>
-      <div class="part-play">
-        <div class="seg" role="group" aria-label="Which system to show">
-          <button class="seg-btn is-on" id="p1-two">2 features</button>
-          <button class="seg-btn" id="p1-three">+ duplicate (sqft in m²)</button>
-        </div>
-        <div class="system" id="p1-system" aria-live="polite"></div>
-      </div>
-    </div>
-    <div class="figs" data-figs="fig01,fig14"></div>
-  </article>
+<!-- ================= NUMBERS ================= -->
+<section class="stats contours-dark" id="numbers" aria-labelledby="numbers-title">
+  <h2 class="mega mega-small" id="numbers-title">The maths <em>predicts</em><br>the machine</h2>
+  <dl class="stat-row">
+    <div class="stat"><dd data-count="eta_crit" data-decimals="3">1.125</dd><dt>the limit η<sub>crit</sub> = 2/λ<sub>max</sub>, known before training</dt></div>
+    <div class="stat"><dd data-count="steps_112" data-decimals="0">1,637</dd><dt>steps for η = 1.12 to converge</dt></div>
+    <div class="stat"><dd data-count="steps_113" data-decimals="0">1,471</dd><dt>steps for η = 1.13 to blow past 10⁶</dt></div>
+    <div class="stat"><dd data-count="kappa" data-decimals="1">8.0</dd><dt>condition number κ: a valley 8× steeper one way</dt></div>
+  </dl>
+  <div class="strip" aria-hidden="true">
+    <div class="mq mq-strip"><span>Rank · Gauss elimination · Gauss-Seidel · Jacobi · Partial derivatives · Chain rule · Hessian · Eigenvalues · Lagrange multipliers · Linear ODEs · Stability · Euler's method · </span><span>Rank · Gauss elimination · Gauss-Seidel · Jacobi · Partial derivatives · Chain rule · Hessian · Eigenvalues · Lagrange multipliers · Linear ODEs · Stability · Euler's method · </span></div>
+  </div>
+</section>
 
-  <!-- PART 2 -->
-  <article class="part paper page" id="part2" data-title="2 · Solving it">
-    <header class="part-head">
-      <span class="stop-num" aria-hidden="true">2</span>
-      <div><h3>Solving it: Gauss elimination vs Gauss-Seidel</h3><p class="tag">Module I · CO1 · direct &amp; iterative methods</p></div>
-    </header>
-    <div class="part-body">
-      <div class="part-text">
-        <p>Gauss elimination solves it exactly in two moves. The iterative methods creep up on the answer; Gauss-Seidel uses each new value straight away, so it gets there about twice as fast as Jacobi.</p>
-        <div class="eq">
-          <math display="block"><msubsup><mi>w</mi><mn>1</mn><mrow><mo>(</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo>)</mo></mrow></msubsup><mo>=</mo><msub><mi>b</mi><mn>1</mn></msub><mo>−</mo><mi>ρ</mi><msubsup><mi>w</mi><mn>2</mn><mrow><mo>(</mo><mi>k</mi><mo>)</mo></mrow></msubsup></math>
-          <math display="block"><msubsup><mi>w</mi><mn>2</mn><mrow><mo>(</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo>)</mo></mrow></msubsup><mo>=</mo><msub><mi>b</mi><mn>2</mn></msub><mo>−</mo><mi>ρ</mi><msubsup><mi>w</mi><mn>1</mn><mrow><mo>(</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo>)</mo></mrow></msubsup></math>
-        </div>
-        <ul class="chips" id="p2-chips"></ul>
-      </div>
-      <div class="part-play">
-        <div class="race" id="race">
-          <div class="lane"><span class="lane-name">Gauss-Seidel</span><div class="track"><span class="runner runner-gs" id="runner-gs"></span></div><span class="lane-count" id="count-gs">0</span></div>
-          <div class="lane"><span class="lane-name">Jacobi</span><div class="track"><span class="runner runner-j" id="runner-j"></span></div><span class="lane-count" id="count-j">0</span></div>
-          <p class="race-note">Each runner moves as its error shrinks from 1 to 10<sup>−6</sup>.</p>
-        </div>
-        <div class="controls"><button class="btn btn-sun" id="race-btn">Start the race</button></div>
-      </div>
-    </div>
-    <div class="figs" data-figs="fig09"></div>
-  </article>
-
-  <!-- PART 3 -->
-  <article class="part paper page" id="part3" data-title="3 · Loss surface">
-    <header class="part-head">
-      <span class="stop-num" aria-hidden="true">3</span>
-      <div><h3>The loss surface: partial derivatives &amp; the minimum test</h3><p class="tag">Module III · CO3 · maxima, minima &amp; eigenvalues</p></div>
-    </header>
-    <div class="part-body">
-      <div class="part-text">
-        <p>The loss is a bowl. Its second derivatives pass the minimum test, and the eigenvalues of the Hessian show it is a long, narrow valley: steep one way, flat the other. The chain rule that finds the slope is exactly backpropagation.</p>
-        <div class="eq">
-          <math display="block"><mi>r</mi><mi>t</mi><mo>−</mo><msup><mi>s</mi><mn>2</mn></msup><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>ρ</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0</mn><mspace width="0.6em"></mspace><mtext>and</mtext><mspace width="0.6em"></mspace><mi>r</mi><mo>&gt;</mo><mn>0</mn><mspace width="0.6em"></mspace><mo>⇒</mo><mspace width="0.4em"></mspace><mtext>minimum</mtext></math>
-          <math display="block"><mo>det</mo><mo>(</mo><mi>A</mi><mo>−</mo><mi>λ</mi><mi>I</mi><mo>)</mo><mo>=</mo><msup><mrow><mo>(</mo><mn>1</mn><mo>−</mo><mi>λ</mi><mo>)</mo></mrow><mn>2</mn></msup><mo>−</mo><msup><mi>ρ</mi><mn>2</mn></msup><mo>=</mo><mn>0</mn><mo>⇒</mo><mi>λ</mi><mo>=</mo><mn>1</mn><mo>±</mo><mi>ρ</mi></math>
-        </div>
-        <ul class="chips" id="p3-chips"></ul>
-      </div>
-      <div class="part-play">
-        <p class="play-title">What does the model predict?</p>
-        <label class="mini-label" for="calc-sqft">Area: <output id="calc-sqft-out">1,200</output> sqft</label>
-        <input type="range" id="calc-sqft" min="450" max="4685" step="5" value="1200">
-        <div class="seg" role="group" aria-label="Bedrooms" id="calc-bhk"></div>
-        <p class="price" id="calc-price" aria-live="polite"></p>
-        <p class="small-note" id="calc-note"></p>
-      </div>
-    </div>
-    <div class="figs" data-figs="fig02,fig03,fig13"></div>
-  </article>
-
-  <!-- PART 4 -->
-  <article class="part paper page" id="part4" data-title="4 · Lagrange">
-    <header class="part-head">
-      <span class="stop-num" aria-hidden="true">4</span>
-      <div><h3>Constrained training: Lagrange multipliers</h3><p class="tag">Module III · CO3 · ridge regression</p></div>
-    </header>
-    <div class="part-body">
-      <div class="part-text">
-        <p>Give the weights a budget: they must lie on a circle of radius <i>s</i>. The best point is where a loss contour just touches the circle, and there the slope points straight along the weights. This is ridge regression, a standard way to stop AI weights growing too large.</p>
-        <div class="eq">
-          <math display="block"><mo>∇</mo><mi>L</mi><mo>+</mo><mi>μ</mi><mi>w</mi><mo>=</mo><mn>0</mn><mo>⇒</mo><mo>(</mo><mi>A</mi><mo>+</mo><mi>μ</mi><mi>I</mi><mo>)</mo><mi>w</mi><mo>=</mo><mi>b</mi><mo>,</mo><mspace width="0.8em"></mspace><msubsup><mi>w</mi><mn>1</mn><mn>2</mn></msubsup><mo>+</mo><msubsup><mi>w</mi><mn>2</mn><mn>2</mn></msubsup><mo>=</mo><msup><mi>s</mi><mn>2</mn></msup></math>
-        </div>
-        <ul class="chips" id="p4-chips" aria-live="polite"></ul>
-      </div>
-      <div class="part-play">
-        <label class="mini-label" for="budget">Weight budget <i>s</i> = <output id="budget-out">0.60</output></label>
-        <input type="range" id="budget" min="0.10" max="1.20" step="0.01" value="0.60">
-        <canvas id="lagrange" class="mini-canvas" role="img" aria-label="Loss contours with the constraint circle and the constrained minimum."></canvas>
-      </div>
-    </div>
-    <div class="figs" data-figs="fig10"></div>
-  </article>
-
-  <!-- PART 5 -->
-  <article class="part paper page" id="part5" data-title="5 · Training as an ODE">
-    <header class="part-head">
-      <span class="stop-num" aria-hidden="true">5</span>
-      <div><h3>Training as a differential equation</h3><p class="tag">Module II · CO2 · linear ODE systems, stability, Euler</p></div>
-    </header>
-    <div class="part-body">
-      <div class="part-text">
-        <p>With tiny steps, training follows a system of linear ODEs. Diagonalising <i>A</i> splits it into two exponential decays, one fast and one slow. Ordinary gradient descent is just <strong>Euler's method</strong> on this ODE with step <i>h</i> = η, and the loss never goes up along the exact flow.</p>
-        <div class="eq">
-          <math display="block"><msup><mi>w</mi><mo>′</mo></msup><mo>=</mo><mo>−</mo><mi>A</mi><mo>(</mo><mi>w</mi><mo>−</mo><msup><mi>w</mi><mo>*</mo></msup><mo>)</mo><mo>⇒</mo><msub><mi>z</mi><mi>i</mi></msub><mo>(</mo><mi>t</mi><mo>)</mo><mo>=</mo><msub><mi>z</mi><mi>i</mi></msub><mo>(</mo><mn>0</mn><mo>)</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>λ</mi><mi>i</mi></msub><mi>t</mi></mrow></msup></math>
-          <math display="block"><mfrac><mrow><mi>d</mi><mi>L</mi></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>=</mo><mo>−</mo><msup><mrow><mo>‖</mo><mo>∇</mo><mi>L</mi><mo>‖</mo></mrow><mn>2</mn></msup><mo>≤</mo><mn>0</mn></math>
-        </div>
-        <ul class="chips" id="p5-chips"></ul>
-      </div>
-      <div class="part-play">
-        <p class="play-title">Exact ODE curve vs Euler steps (h = η from the demo slider)</p>
-        <canvas id="euler" class="mini-canvas" role="img" aria-label="Exact gradient-flow solution for w1 and w2 with Euler points at the current learning rate."></canvas>
-        <ul class="legend euler-legend">
-          <li><span class="key key-line" aria-hidden="true"></span><span>exact w<sub>1</sub>(t)</span></li>
-          <li><span class="key key-line key-dash" aria-hidden="true"></span><span>exact w<sub>2</sub>(t)</span></li>
-          <li><span class="key key-sq-orange" aria-hidden="true"></span><span class="key key-sq-blue" aria-hidden="true"></span><span>Euler steps, h = η = <b id="euler-eta">0.10</b></span></li>
-        </ul>
-        <div class="controls"><span class="mini-label">Try:</span>
-          <button class="btn btn-small" data-set-eta="0.10">η = 0.10</button>
-          <button class="btn btn-small" data-set-eta="1.00">η = 1.00</button>
-          <button class="btn btn-small" data-set-eta="1.13">η = 1.13</button>
-        </div>
-      </div>
-    </div>
-    <div class="figs" data-figs="fig07,fig08,fig11"></div>
-  </article>
-
-  <!-- PART 6 -->
-  <article class="part paper page" id="part6" data-title="6 · The limit">
-    <header class="part-head">
-      <span class="stop-num" aria-hidden="true">6</span>
-      <div><h3>The learning-rate limit</h3><p class="tag">Modules I + II · CO6 · the headline result</p></div>
-    </header>
-    <div class="part-body">
-      <div class="part-text">
-        <p>In eigen-coordinates every step multiplies each error mode by its own factor. Training converges only if every factor stays inside (−1, 1). The eigenvalues predicted the limit <em>before</em> any training ran, and all seven runs agreed.</p>
-        <div class="eq">
-          <math display="block"><msub><mi>z</mi><mi>i</mi></msub><mo>←</mo><mo>(</mo><mn>1</mn><mo>−</mo><mi>η</mi><msub><mi>λ</mi><mi>i</mi></msub><mo>)</mo><msub><mi>z</mi><mi>i</mi></msub></math>
-          <math display="block"><mo stretchy="false">|</mo><mn>1</mn><mo>−</mo><mi>η</mi><msub><mi>λ</mi><mi>i</mi></msub><mo stretchy="false">|</mo><mo>&lt;</mo><mn>1</mn><mo>⇔</mo><mi>η</mi><mo>&lt;</mo><mfrac><mn>2</mn><msub><mi>λ</mi><mi>max</mi></msub></mfrac><mo>=</mo><mn>1.125</mn></math>
-        </div>
-        <ul class="chips" id="p6-chips"></ul>
-      </div>
-      <div class="part-play">
-        <table class="runs" id="runs-table">
-          <caption>Seven training runs from w<sub>0</sub> = (−1.5, −1.0)</caption>
-          <thead><tr><th scope="col">η</th><th scope="col">factor</th><th scope="col">predicted</th><th scope="col">outcome</th><th scope="col">steps</th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <div class="controls">
-          <button class="btn btn-small" data-set-eta="1.12" data-scroll="demo">Watch 1.12 in the demo</button>
-          <button class="btn btn-small" data-set-eta="1.13" data-scroll="demo">Watch 1.13 in the demo</button>
-        </div>
-      </div>
-    </div>
-    <div class="figs" data-figs="fig04,fig05,fig06,fig12,anim"></div>
-  </article>
+<!-- ================= SEVEN RUNS ================= -->
+<section class="runs-fan" id="runs" aria-labelledby="runs-title">
+  <h2 class="mega mega-small" id="runs-title">Seven runs<br><em>one limit</em></h2>
+  <div class="fan" id="fan"></div>
+  <p class="fan-note">Pick a card to watch that run in the experiment.</p>
 </section>
 </main>
 
-<footer class="foot" id="site-foot">
-  <p>Every number on this page is read from <code>results.json</code>, the same file the notebook writes, so the site and the notebook always agree. Works offline: just open <code>index.html</code>.</p>
-  <p>25BSMA01 Matrix Algebra and Calculus · Experiential Learning · Jain University, Faculty of Engineering &amp; Technology</p>
+<!-- ================= FOOTER ================= -->
+<footer class="footer" id="end">
+  <div class="footer-card contours">
+    <p class="mega mega-small">Always check <em>the eigenvalues</em>.</p>
+    <div class="footer-cols">
+      <nav aria-label="Footer">
+        <p class="footer-label">Pages</p>
+        <a href="#top">Home</a><a href="#story">Six stops</a><a href="#demo">The experiment</a><a href="#gallery">Figures</a>
+      </nav>
+      <canvas id="footer-island" aria-hidden="true"></canvas>
+      <div>
+        <p class="footer-label">Project</p>
+        <p>25BSMA01 Matrix Algebra and Calculus<br>Experiential Learning<br>Jain University, FET</p>
+      </div>
+    </div>
+    <p class="footer-fine" id="site-foot">Every number on this page is read from <code>results.json</code>, the file the notebook writes, so the site and the notebook always agree. Works offline: just open <code>index.html</code>.</p>
+  </div>
 </footer>
 
-<!-- Page navigation (one page at a time) -->
-<nav class="pager paper" aria-label="Pages">
-  <button class="btn pager-btn" id="prev-btn"><span aria-hidden="true">◀</span> <span class="pager-label" id="prev-label">Back</span></button>
-  <ol class="dots" id="dots"></ol>
-  <button class="btn btn-sun pager-btn" id="next-btn"><span class="pager-label" id="next-label">Next</span> <span aria-hidden="true">▶</span></button>
-</nav>
-
-<!-- Figure viewer -->
 <dialog class="lightbox" id="lightbox" aria-labelledby="lightbox-caption">
   <button class="icon-btn lb-close" id="lb-close" aria-label="Close figure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l6 6 6-6 2 2-6 6 6 6-2 2-6-6-6 6-2-2 6-6-6-6z"/></svg></button>
   <button class="icon-btn lb-prev" id="lb-prev" aria-label="Previous figure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4v16L5 12z"/></svg></button>
@@ -357,6 +456,7 @@
 </dialog>
 
 <script src="data.js?v=4e0c286dc4"></script>
-<script src="app.js?v=4ac8b1c4f0"></script>
+<script src="app.js?v=596155717a"></script>
+<script src="story.js?v=3dffc9e430"></script>
 </body>
 </html>
