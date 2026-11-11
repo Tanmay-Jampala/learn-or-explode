@@ -98,7 +98,7 @@
   const story = $("story"), track = $("htrack"), pin = story.querySelector(".story-pin");
   const panels = [...track.children];
   let travel = 0;                                           // how far the track slides (px); 0 on phones
-  const COLOR_STOPS = [[0, [23, 36, 42]], [0.38, [36, 86, 88]], [0.68, [99, 194, 188]], [1, [243, 242, 231]]];   // ink → deep teal → sea → paper
+  const COLOR_STOPS = [[0, [40, 44, 32]], [0.38, [58, 65, 48]], [0.68, [169, 173, 154]], [1, [244, 244, 237]]];   // ink → deep teal → sea → paper
   function colorAt(p) {
     for (let i = 1; i < COLOR_STOPS.length; i++) {
       const [p0, c0] = COLOR_STOPS[i - 1], [p1, c1] = COLOR_STOPS[i];
@@ -122,7 +122,7 @@
     track.style.transform = `translate3d(${(-p * travel).toFixed(1)}px, 0, 0)`;
     const [r, g, b] = colorAt(p);
     story.style.setProperty("--story-bg", `rgb(${r}, ${g}, ${b})`);
-    story.style.setProperty("--story-fg", p > 0.6 ? "#22333a" : "#f3f2e7");
+    story.style.setProperty("--story-fg", p > 0.6 ? "#1b1e14" : "#f4f4ed");
     const stop = clamp(Math.round(p * (panels.length - 1)), 0, panels.length - 1);
     $("hud-num").textContent = "0" + stop;
     $("hud-fill").style.width = (p * 100).toFixed(1) + "%";

@@ -22,9 +22,9 @@
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const C = {
-    sky: "#63c2bc", skyLight: "#8fded2", skyDeep: "#3f9a94", ink: "#22333a", paper: "#f3f2e7",
-    shade: "#4d6266", stone: "#a9b6b1", grass: "#4f9a62", grassDark: "#2f6e47", sun: "#f2c94c",
-    red: "#b8412f", orange: "#e5793b", navy: "#22384a", greenSign: "#2e7d4f", blue: "#2f6fa6",
+    sky: "#282c20", skyLight: "#8fded2", skyDeep: "#3f9a94", ink: "#1b1e14", paper: "#f4f4ed",
+    shade: "#4d6266", stone: "#a9b6b1", grass: "#4f9a62", grassDark: "#2f6e47", sun: "#d2ff00",
+    red: "#b8412f", orange: "#d2ff00", navy: "#22384a", greenSign: "#2e7d4f", blue: "#2f6fa6",
   };
 
   // ---------------------------------------------------------------- maths
@@ -77,11 +77,10 @@
 
   // ---------------------------------------------------------------- the island (cel-shaded contour map)
   // Loss bands from the minimum outwards: town → meadow → forest → beach → shallows → sea
-  const BAND_COLORS = ["#f5f1e0", "#e2e4d3", "#c3dcae", "#94c98a", "#66ad70", "#478f5c", "#dccfa2",
-    "#a6e6da", "#80d6ca", C.sky].map(hexToRgb);
+  const BAND_COLORS = ["#f4f4ed", "#e3e6cf", "#cfd6a8", "#b4c070", "#8f9c4a", "#6b7638", "#4d552e", "#3a4028", "#30351f", C.sky].map(hexToRgb);
   const BAND_LEVELS = [0.015, 0.06, 0.15, 0.35, 0.7, 1.3, 1.75, 2.6, 4.0];   // L − L* thresholds (one per colour change)
   const WATER_FROM = 7;
-  const INK_RGB = hexToRgb(C.ink), WATER_INK = hexToRgb("#4aa9a1");
+  const INK_RGB = hexToRgb(C.ink), WATER_INK = hexToRgb("#3d4432");
 
   function renderIsland(width, height, dpr, view, levelScale, decorate) {
     const pw = Math.round(width * dpr), ph = Math.round(height * dpr);
@@ -228,16 +227,16 @@
     // The real loss contours, shown on a round "planet" (the disc keeps the slow spin seamless)
     const span = 3.4;
     const view = { w1min: W_STAR[0] - span, w1max: W_STAR[0] + span, w2min: W_STAR[1] - span, w2max: W_STAR[1] + span };
-    const island = renderIsland(w, h, dpr, view, 0.5, { seed: 3, trees: 80, size: 8, houses });
+    const island = renderIsland(w, h, dpr, view, 0.5, null);
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2, cy = h / 2, radius = w / 2 - 8;
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.clip();
     ctx.drawImage(island, 0, 0, w, h);
     ctx.restore();
-    ctx.lineWidth = 8; ctx.strokeStyle = "rgba(166,230,218,.9)";
+    ctx.lineWidth = 2; ctx.strokeStyle = "#d2ff00";
     ctx.beginPath(); ctx.arc(cx, cy, radius - 2, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 2.5; ctx.strokeStyle = "#4aa9a1";
+    ctx.lineWidth = 0.01; ctx.strokeStyle = "#282c20";
     ctx.beginPath(); ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2); ctx.stroke();
   }
 
@@ -309,7 +308,7 @@
     ctx.lineWidth = 3; ctx.strokeStyle = C.ink;
     ctx.fillStyle = "rgba(34,51,58,.25)"; ctx.beginPath(); ctx.ellipse(x + 3, y + 12, 11, 5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = C.orange; ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = C.red; ctx.fillRect(x - 6, y - 6, 12, 11); ctx.strokeRect(x - 6, y - 6, 12, 11);
+    ctx.fillStyle = C.ink; ctx.fillRect(x - 6, y - 6, 12, 11); ctx.strokeRect(x - 6, y - 6, 12, 11);
     ctx.fillStyle = C.paper; ctx.fillRect(x - 3, y - 3, 6, 2); ctx.fillRect(x - 1, y - 3, 2, 6);
   }
   function arrow(ctx, x0, y0, x1, y1, color, width) {
@@ -332,7 +331,7 @@
     const key = `${k}|${w}x${h}@${dpr}`;
     if (!islandCache.has(key)) {
       if (islandCache.size > 14) islandCache.clear();
-      islandCache.set(key, renderIsland(w, h, dpr, viewFor(k), 1, k <= 2 ? { seed: 5, trees: 26, size: 8 } : null));
+      islandCache.set(key, renderIsland(w, h, dpr, viewFor(k), 1, null));
     }
     return islandCache.get(key);
   }
@@ -390,9 +389,10 @@
     const pts = run.path.map((p) => toMap(p, w, h));
     if (pts.length > 1) {
       ctx.lineJoin = "round";
-      ctx.strokeStyle = "rgba(34,51,58,.35)"; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(210,255,0,.7)"; ctx.lineWidth = 1.5;
       ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
       const recent = pts.slice(Math.max(0, pts.length - 14));
+      ctx.strokeStyle = C.paper; ctx.lineWidth = 6.5; ctx.beginPath(); recent.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
       ctx.strokeStyle = C.ink; ctx.lineWidth = 3.2;
       ctx.beginPath(); recent.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
       ctx.fillStyle = C.paper; ctx.lineWidth = 2;
