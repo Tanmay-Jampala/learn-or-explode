@@ -13,7 +13,7 @@ checklist. Tests live in the project repo at `tests/test_site_v2.py` (pytest + P
 | Zero requests to other origins (fully offline) | request log, file:// | **Pass** |
 | Works from file:// (double-click) | full suite, 22 tests | **Pass** |
 | Works from `python -m http.server` | 7 core tests | **Pass** |
-| Works from GitHub Pages | core tests against the live URL after deploy | see below |
+| Works from GitHub Pages | 13 core tests against the live URL after deploy (load, offline, `#demo`, keys, §6 numbers, old links) | **Pass** |
 | `#demo` cold load opens the experiment; `#demo?preset=3` selects η = 1.12 | test | **Pass** |
 | Keys `1`–`4` (also Numpad), `Space`, `R`, `S`, `F`, `+`/`−` via `event.code`; Shift doesn't matter; the page never scrolls | test | **Pass** |
 | η = 1.00 → converged in 59 steps, factor 0.7777 | test | **Pass** |
