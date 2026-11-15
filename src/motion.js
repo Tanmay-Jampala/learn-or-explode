@@ -46,8 +46,8 @@ export function initMotion() {
   });
   gsap.from(".run-card", { y: 80, opacity: 0, duration: 1, stagger: 0.07, ease: "expo.out", scrollTrigger: { trigger: "#hall-grid", start: "top 80%", once: true } });
   gsap.from(".member", { y: 120, rotate: 0, opacity: 0, duration: 1.2, stagger: 0.06, ease: "expo.out", scrollTrigger: { trigger: "#fan", start: "top 85%", once: true } });
-  gsap.fromTo(".bleed-left", { xPercent: -12 }, { xPercent: 6, ease: "none", scrollTrigger: { trigger: "#learn-explode", start: "top bottom", end: "bottom top", scrub: true } });
-  gsap.fromTo(".bleed-right", { xPercent: 12 }, { xPercent: -6, ease: "none", scrollTrigger: { trigger: "#learn-explode", start: "top bottom", end: "bottom top", scrub: true } });
+  if (window.innerWidth > 768) gsap.fromTo(".bleed-left", { xPercent: -12 }, { xPercent: 6, ease: "none", scrollTrigger: { trigger: "#learn-explode", start: "top bottom", end: "bottom top", scrub: true } });
+  if (window.innerWidth > 768) gsap.fromTo(".bleed-right", { xPercent: 12 }, { xPercent: -6, ease: "none", scrollTrigger: { trigger: "#learn-explode", start: "top bottom", end: "bottom top", scrub: true } });
 
   window.addEventListener("load", () => ScrollTrigger.refresh());
   return { scrollTo: (el) => lenis.scrollTo(el, { duration: 1.4 }) };

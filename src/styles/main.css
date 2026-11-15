@@ -339,10 +339,10 @@ input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius
   .scatter { grid-template-columns: 1fr; }
   .fig-card, .fig-card:nth-child(n) { grid-column: 1; margin-top: 0; }
   .quote-1 { margin-left: 0; }
-  .le-cols { width: 100%; }
-  .learn-explode { padding-block: 46vh; }
-  .bleed { width: 80vw; height: 40%; }
-  .bleed-left { top: 4%; left: -20vw; } .bleed-right { top: 56%; right: -20vw; }
+  .learn-explode { display: flex; flex-direction: column; gap: 22px; padding-block: 14vh; min-height: 0; }
+  .le-cols { display: contents; }
+  .bleed { position: relative; inset: auto; width: 100%; height: 260px; transform: none !important; }
+  .bleed-left { order: 1; } .le-col:first-child { order: 2; } .scribble-just { order: 3; } .bleed-right { order: 4; } .le-col:last-child { order: 5; }
   .scribble-just { justify-self: center; }
   .hall-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; padding-bottom: 10px; margin: 0 calc(-1 * var(--pad)); padding-inline: var(--pad); }
   .run-card { flex: 0 0 72vw; scroll-snap-align: center; }

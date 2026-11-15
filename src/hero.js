@@ -15,7 +15,7 @@ const heightAt = (x, z) => {
   return Math.floor(s / TERRACE) * TERRACE * HEIGHT;
 };
 function terrain(palette) {
-  const geo = new THREE.PlaneGeometry(SPAN * 2, SPAN * 2, 170, 170).rotateX(-Math.PI / 2).toNonIndexed();
+  const geo = new THREE.PlaneGeometry(SPAN * 2, SPAN * 2, 130, 130).rotateX(-Math.PI / 2).toNonIndexed();
   const pos = geo.attributes.position, colors = [], col = new THREE.Color();
   for (let i = 0; i < pos.count; i += 3) {                // one height level per triangle → flat terraces
     const cx = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3, cz = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
@@ -30,7 +30,7 @@ function terrain(palette) {
   }
   // keep only the island's triangles (no square sea plate around it)
   const keep = [], keepCol = [], p = pos.array;
-  for (let i = 0; i < p.length; i += 9) if (!Number.isNaN(p[i + 1])) { keep.push(...p.slice(i, i + 9)); keepCol.push(...colors.slice(i, i + 9)); }
+  for (let i = 0; i < p.length; i += 9) if (!Number.isNaN(p[i + 1])) for (let k = 0; k < 9; k++) { keep.push(p[i + k]); keepCol.push(colors[i + k]); }
   geo.setAttribute("position", new THREE.Float32BufferAttribute(keep, 3));
   geo.setAttribute("color", new THREE.Float32BufferAttribute(keepCol, 3));
   geo.deleteAttribute("uv"); geo.deleteAttribute("normal");
@@ -38,18 +38,21 @@ function terrain(palette) {
   return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 }));
 }
 const to3 = (w) => { const x = w[0] - W_STAR[0], z = -(w[1] - W_STAR[1]); return new THREE.Vector3(x, Math.max(heightAt(x, z), 0) + 0.05, z); };
+// The path as two instanced meshes (one draw call for all segments, one for all dots).
 function pathMesh(points, color) {
-  const group = new THREE.Group(), v = points.map(to3);
+  const group = new THREE.Group(), v = points.map(to3), n = v.length - 1;
   const mat = new THREE.MeshBasicMaterial({ color, depthTest: false });
+  const segs = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.022, 0.022, 1, 6), mat, Math.max(n, 1));
+  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 10, 8), mat, v.length);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
   for (let i = 1; i < v.length; i++) {
-    const a = v[i - 1], b = v[i], len = a.distanceTo(b);
-    const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, len, 6), mat);
-    seg.position.copy(a).add(b).multiplyScalar(0.5);
-    seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
-    seg.renderOrder = 10; group.add(seg);
+    const a = v[i - 1], b = v[i], dir = b.clone().sub(a), len = dir.length();
+    q.setFromUnitVectors(up, dir.normalize());
+    segs.setMatrixAt(i - 1, m.compose(a.clone().add(b).multiplyScalar(0.5), q, new THREE.Vector3(1, len, 1)));
   }
-  const dot = new THREE.SphereGeometry(0.05, 10, 8);
-  v.forEach((p) => { const m = new THREE.Mesh(dot, mat); m.position.copy(p); m.renderOrder = 11; group.add(m); });
+  v.forEach((p, i) => dots.setMatrixAt(i, m.compose(p, new THREE.Quaternion(), one)));
+  segs.count = n; segs.renderOrder = 10; dots.renderOrder = 11;
+  group.add(segs, dots);
   return group;
 }
 function scene(palette, eta, steps, pathColor) {

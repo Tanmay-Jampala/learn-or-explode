@@ -106,7 +106,7 @@ function initGallery() {
 function openDrawer(i) {
   drawerIndex = i;
   const f = FIGURES[i], [w, h] = SIZES[f.id], im = $("drawer-img");
-  $("drawer-chip").textContent = `Module ${f.module} · ${f.chip}`;
+  $("drawer-chip").textContent = f.chip.startsWith("MODULE") ? f.chip : `Module ${f.module} · ${f.chip}`;
   $("drawer-title").textContent = f.title;
   im.src = `figures/${f.id}-2x.webp`; im.width = w; im.height = h; im.alt = `${f.title}: notebook figure`;
   $("drawer-text").textContent = f.text;

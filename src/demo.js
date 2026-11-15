@@ -172,7 +172,7 @@ function placeTicks() {
   const s = $("eta"), min = Number(s.min), max = Number(s.max), thumb = 24, width = s.offsetWidth;
   const pct = (e) => (e - min) / (max - min);
   $("ticks").innerHTML = "";
-  [[ETA_ZIGZAG, "tick-zig", `zig-zag<br>${fmt(ETA_ZIGZAG, 3)}`], [ETA_OPT, "tick-opt", `best<br>${fmt(ETA_OPT, 2)}`], [ETA_CRIT, "tick-crit", `η crit<br>${fmt(ETA_CRIT, 3)}`]].forEach(([e, cls, html]) => {
+  [[ETA_ZIGZAG, "tick-zig", `zig-zag<br>${fmt(ETA_ZIGZAG, 3)}`], [ETA_OPT, "tick-opt", `best<br>${fmt(ETA_OPT, 2)}`], [ETA_CRIT, "tick-crit", `<span class="gk">η</span> crit<br>${fmt(ETA_CRIT, 3)}`]].forEach(([e, cls, html]) => {
     const t = document.createElement("span"); t.className = `tick ${cls}`; t.innerHTML = html;
     t.style.left = `${thumb / 2 + pct(e) * (width - thumb)}px`; $("ticks").appendChild(t);
   });
