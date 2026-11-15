@@ -1,0 +1,18 @@
+{
+  "name": "learn-or-explode",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Learn or Explode: how eigenvalues decide whether gradient descent learns or explodes.",
+  "scripts": {
+    "build": "node scripts/build-data.mjs && node scripts/build-contours.mjs && node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/mona-sans": "5.3.0",
+    "@fontsource/instrument-serif": "5.3.0",
+    "esbuild": "0.28.2",
+    "gsap": "3.15.1",
+    "katex": "0.19.1",
+    "lenis": "1.3.27",
+    "three": "0.187.0"
+  }
+}
